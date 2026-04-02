@@ -1,5 +1,14 @@
-/.env
-/.venv
-/__pycache__
-/.vscode
+# Entornos virtuales
+.venv/
+venv/
+env/
+bin/
 
+# Variables de entorno (SECRETOS)
+.env
+.env.local
+.env.test
+
+# Archivos de configuración de IDE
+.vscode/
+.antigravity/
