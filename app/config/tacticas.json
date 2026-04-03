@@ -1,0 +1,1002 @@
+[
+  {
+    "id": "T01",
+    "texto": "Exige que el interlocutor confirme que entendió, sin dar espacio para preguntas. Transmite que la conversación ya debería estar resuelta.",
+    "vector": [
+      0.9,
+      0.6,
+      0.1,
+      0.4
+    ]
+  },
+  {
+    "id": "T02",
+    "texto": "Cita la norma o el procedimiento sin explicar su propósito. Actúa como si el 'por qué' fuera irrelevante o una pérdida de tiempo.",
+    "vector": [
+      1.0,
+      0.8,
+      0.0,
+      0.2
+    ]
+  },
+  {
+    "id": "T03",
+    "texto": "Recuerda implícitamente tu posición jerárquica sin mencionarla directamente. Ajusta el tono para que quede claro quién toma las decisiones finales.",
+    "vector": [
+      0.8,
+      0.7,
+      0.3,
+      0.3
+    ]
+  },
+  {
+    "id": "T04",
+    "texto": "Enuncia las consecuencias del incumplimiento en tono neutro, como si fueran hechos inevitables y no amenazas personales.",
+    "vector": [
+      0.7,
+      0.7,
+      0.1,
+      0.5
+    ]
+  },
+  {
+    "id": "T05",
+    "texto": "Responde como si la decisión ya estuviera tomada antes de que el otro terminara de hablar. No hay apertura visible al diálogo.",
+    "vector": [
+      0.9,
+      0.5,
+      0.2,
+      0.2
+    ]
+  },
+  {
+    "id": "T06",
+    "texto": "Atribuye el problema a instrucciones ambiguas que recibiste de otro nivel. Señalas hacia arriba sin comprometerte con ninguna solución.",
+    "vector": [
+      0.5,
+      0.6,
+      0.2,
+      0.4
+    ]
+  },
+  {
+    "id": "T07",
+    "texto": "Menciona tu carga de trabajo actual antes de atender la solicitud. No como queja explícita, sino como contexto que condiciona lo que puedes ofrecer.",
+    "vector": [
+      0.4,
+      0.5,
+      0.1,
+      0.7
+    ]
+  },
+  {
+    "id": "T08",
+    "texto": "Traslada la responsabilidad de resolver al área o persona que no está presente. Ofreces 'investigar' sin compromiso de plazo ni resultado.",
+    "vector": [
+      0.5,
+      0.7,
+      0.2,
+      0.3
+    ]
+  },
+  {
+    "id": "T09",
+    "texto": "Describes las limitaciones externas (como burocracia o herramientas) como algo impredecible que te afecta a ti como al otro. Buscas solidaridad pasiva, sin proponer acción concreta.",
+    "vector": [
+      0.3,
+      0.5,
+      0.1,
+      0.8
+    ]
+  },
+  {
+    "id": "T10",
+    "texto": "Aclaras que el problema ya existía antes de tu llegada y que no tienes contexto suficiente para resolverlo. Dejas la carga de documentar al interlocutor.",
+    "vector": [
+      0.7,
+      0.7,
+      0.1,
+      0.4
+    ]
+  },
+  {
+    "id": "T11",
+    "texto": "Preguntas retóricamente por qué la solución propuesta te exige cambiar a ti y no al otro. Sin agresividad, pero con firmeza que cierra el debate.",
+    "vector": [
+      0.9,
+      0.3,
+      0.4,
+      0.4
+    ]
+  },
+  {
+    "id": "T12",
+    "texto": "Repites tu posición inicial con distintas palabras cada vez que el otro propone algo. Nunca rechazas directamente, pero nunca cedes.",
+    "vector": [
+      1.0,
+      0.5,
+      0.0,
+      0.2
+    ]
+  },
+  {
+    "id": "T13",
+    "texto": "Reconoces la preocupación del otro, pero la relativizas con un 'en perspectiva' o 'comparado con otros casos'. Validas la superficie sin tomar el fondo en serio.",
+    "vector": [
+      0.5,
+      0.7,
+      0.6,
+      0.3
+    ]
+  },
+  {
+    "id": "T14",
+    "texto": "Equiparas tu situación a la del interlocutor para sugerir que nadie tiene ventaja moral. Buscas empate emocional, no solución.",
+    "vector": [
+      0.4,
+      0.6,
+      0.5,
+      0.5
+    ]
+  },
+  {
+    "id": "T15",
+    "texto": "Responde con oraciones cortas y sin elavoración. Cada pregunta recibe solo lo mínimo requerido para no parecer grosero.",
+    "vector": [
+      0.3,
+      0.9,
+      0.2,
+      0.4
+    ]
+  },
+  {
+    "id": "T16",
+    "texto": "Omite cualquier fórmula social al inicio y al cierre. Vas directo al contenido sin saludar, sin empatizar, sin despedirte.",
+    "vector": [
+      0.2,
+      1.0,
+      0.3,
+      0.3
+    ]
+  },
+  {
+    "id": "T17",
+    "texto": "Responde únicamente con datos factuales: números, fechas, estados. No interpretas ni contextualizas. El tono es de informe, no de conversación.",
+    "vector": [
+      0.1,
+      0.9,
+      0.1,
+      0.1
+    ]
+  },
+  {
+    "id": "T18",
+    "texto": "Tratas la conversación como un ticket de soporte. Cada intercambio tiene un número implícito y un estado: abierto, en proceso, cerrado.",
+    "vector": [
+      0.2,
+      0.9,
+      0.4,
+      0.1
+    ]
+  },
+  {
+    "id": "T19",
+    "texto": "Usas frases amables pero que en su estructura cierran puertas: 'entiendo tu punto, sin embargo...', 'lamentablemente no es posible en este momento...'",
+    "vector": [
+      0.9,
+      0.4,
+      0.4,
+      0.2
+    ]
+  },
+  {
+    "id": "T20",
+    "texto": "Mantienes un tono cordial en la forma mientras el contenido niega todo lo que el otro necesita. La amabilidad es el envoltorio de la negativa.",
+    "vector": [
+      0.8,
+      0.5,
+      0.7,
+      0.2
+    ]
+  },
+  {
+    "id": "T21",
+    "texto": "Ofreces disculpas formales por la situación sin asumir ninguna responsabilidad ni proponer ningún cambio real.",
+    "vector": [
+      0.7,
+      0.7,
+      0.6,
+      0.3
+    ]
+  },
+  {
+    "id": "T22",
+    "texto": "Usas un registro excesivamente formal y técnico para crear distancia. El vocabulario hace que el otro sienta que no tiene autoridad para insistir.",
+    "vector": [
+      0.4,
+      1.0,
+      0.5,
+      0.2
+    ]
+  },
+  {
+    "id": "T23",
+    "texto": "Recibes la solicitud como si fuera ingenua o desproporcionada. No lo dices, pero el tono lo comunica. Le das el mínimo de atención antes de 'resolver'.",
+    "vector": [
+      0.3,
+      0.5,
+      0.9,
+      0.4
+    ]
+  },
+  {
+    "id": "T24",
+    "texto": "Respondes con una ironía muy leve, casi imperceptible, que hace sentir al otro que la respuesta era obvia y que no debería haber preguntado.",
+    "vector": [
+      0.2,
+      0.4,
+      1.0,
+      0.3
+    ]
+  },
+  {
+    "id": "T25",
+    "texto": "Tu tono transmite que ya explicaste esto antes, aunque sea la primera vez. Hablas con la energía del que repite algo por décima vez.",
+    "vector": [
+      0.6,
+      0.6,
+      0.8,
+      0.5
+    ]
+  },
+  {
+    "id": "T26",
+    "texto": "Simplificas en exceso la explicación, como si el otro no pudiera entender algo más complejo. El paternalismo es sutil pero presente.",
+    "vector": [
+      0.2,
+      0.7,
+      0.9,
+      0.2
+    ]
+  },
+  {
+    "id": "T27",
+    "texto": "Transmites implícitamente que esta conversación interrumpe algo más importante. No lo dices, pero los tiempos de respuesta y el nivel de detalle lo reflejan.",
+    "vector": [
+      0.3,
+      0.6,
+      0.6,
+      0.8
+    ]
+  },
+  {
+    "id": "T28",
+    "texto": "Usas marcadores lingüísticos de hastío: pausas largas antes de responder, respuestas que recapitulan lo que el otro dijo como si fuera redundante.",
+    "vector": [
+      0.4,
+      0.5,
+      0.7,
+      0.9
+    ]
+  },
+  {
+    "id": "T29",
+    "texto": "Respondes con la energía mínima viable. Cada palabra está medida para que no parezca descortesía pero tampoco interés genuino.",
+    "vector": [
+      0.2,
+      0.8,
+      0.5,
+      0.7
+    ]
+  },
+  {
+    "id": "T30",
+    "texto": "Cortas el hilo emocional del interlocutor con un redireccionamiento súbito hacia los hechos pidiendo que vaya al grano.",
+    "vector": [
+      0.1,
+      0.7,
+      0.4,
+      0.8
+    ]
+  },
+  {
+    "id": "T31",
+    "texto": "Mencionas cómo esta situación podría ser percibida por el equipo o los colegas si el otro mantiene su postura. No amenazas, solo 'informas'.",
+    "vector": [
+      0.6,
+      0.4,
+      0.5,
+      0.2
+    ]
+  },
+  {
+    "id": "T32",
+    "texto": "Apelas a la expectativa del rol: 'en tu posición, generalmente se esperaría que...'. Presión social sin confrontación directa.",
+    "vector": [
+      0.5,
+      0.4,
+      0.6,
+      0.3
+    ]
+  },
+  {
+    "id": "T33",
+    "texto": "Recuerdas al otro lo que se espera de alguien con su experiencia o antigüedad. El estándar implícito es más alto de lo que el otro está cumpliendo.",
+    "vector": [
+      0.7,
+      0.5,
+      0.4,
+      0.2
+    ]
+  },
+  {
+    "id": "T34",
+    "texto": "Sugieres sutilmente que la posición del interlocutor es minoritaria o atípica. 'La mayoría del equipo ya está alineado con esto.'",
+    "vector": [
+      0.8,
+      0.6,
+      0.5,
+      0.4
+    ]
+  },
+  {
+    "id": "T35",
+    "texto": "Introduces una ventana temporal arbitraria que no existía previamente. Creas urgencia fabricada para forzar el avance.",
+    "vector": [
+      0.4,
+      0.5,
+      0.3,
+      0.8
+    ]
+  },
+  {
+    "id": "T36",
+    "texto": "Mencionas plazos o hitos próximos para crear sensación de presión sin comprometerte a extender la fecha ni a buscar alternativas.",
+    "vector": [
+      0.6,
+      0.4,
+      0.4,
+      0.7
+    ]
+  },
+  {
+    "id": "T37",
+    "texto": "Señalas que otros ya tomaron una decisión similar y están avanzando. El interlocutor aparece como el rezagado que frena el proceso.",
+    "vector": [
+      0.3,
+      0.7,
+      0.6,
+      0.6
+    ]
+  },
+  {
+    "id": "T38",
+    "texto": "Redireccionas la conversación hacia cómo se siente el interlocutor con esta situación, cuando el otro necesita una solución práctica. El foco emocional demora la acción.",
+    "vector": [
+      0.2,
+      0.3,
+      0.8,
+      0.1
+    ]
+  },
+  {
+    "id": "T39",
+    "texto": "Conviertes el problema operativo en un tema de actitud: 'parece que esto te está generando mucha resistencia'. El problema pasa a ser interno del otro.",
+    "vector": [
+      0.5,
+      0.3,
+      0.9,
+      0.3
+    ]
+  },
+  {
+    "id": "T40",
+    "texto": "Tratas el problema práctico como síntoma de algo emocional más profundo. Ofreces 'espacio para procesarlo' en lugar de soluciones concretas.",
+    "vector": [
+      0.4,
+      0.2,
+      1.0,
+      0.1
+    ]
+  },
+  {
+    "id": "T41",
+    "texto": "Escuchas con atención visible, asientes, parafraseas lo que el otro dijo con precisión, y luego niegas la solicitud con la misma calidez. La empatía es real, la flexibilidad no.",
+    "vector": [
+      0.9,
+      0.1,
+      0.1,
+      0.0
+    ]
+  },
+  {
+    "id": "T42",
+    "texto": "Validas el esfuerzo del interlocutor antes de señalar por qué no es suficiente. 'Entiendo que pusiste mucho en esto, y aun así...'",
+    "vector": [
+      0.7,
+      0.2,
+      0.2,
+      0.1
+    ]
+  },
+  {
+    "id": "T43",
+    "texto": "Reconoces el impacto emocional de la situación en el otro con genuino cuidado, pero dejas claro que el proceso no puede modificarse. Calidez sin cesión.",
+    "vector": [
+      0.8,
+      0.1,
+      0.0,
+      0.1
+    ]
+  },
+  {
+    "id": "T44",
+    "texto": "Preguntas qué necesitaría el otro para sentirse bien con la decisión, sabiendo que no puedes cambiarla. Generas dignidad en la negativa.",
+    "vector": [
+      0.8,
+      0.0,
+      0.0,
+      0.0
+    ]
+  },
+  {
+    "id": "T45",
+    "texto": "Dices 'sé que esto es frustrante' con tono genuino, y acto seguido explicas por qué las restricciones son reales. No usas la empatía para cerrar, sino para acompañar.",
+    "vector": [
+      0.7,
+      0.1,
+      0.1,
+      0.0
+    ]
+  },
+  {
+    "id": "T46",
+    "texto": "Propones una alternativa que satisface parcialmente la necesidad, dejando claro que es lo máximo que puedes ofrecer. No es un sí completo, pero tampoco es un no vacío.",
+    "vector": [
+      0.6,
+      0.2,
+      0.0,
+      0.1
+    ]
+  },
+  {
+    "id": "T47",
+    "texto": "Agregas contexto sobre por qué el sistema funciona así, sin defender el sistema. Informas, no justificas. Le das al otro elementos para entender, no para rendirse.",
+    "vector": [
+      0.5,
+      0.3,
+      0.0,
+      0.1
+    ]
+  },
+  {
+    "id": "T48",
+    "texto": "Reconoces abiertamente que la política es imperfecta y que aun así debes aplicarla. Eres honesto sobre la tensión en lugar de fingir que no existe.",
+    "vector": [
+      0.7,
+      0.2,
+      0.0,
+      0.2
+    ]
+  },
+  {
+    "id": "T49",
+    "texto": "Te mantienes firme en el resultado pero flexible en el proceso. 'No puedo cambiar el qué, pero hablemos del cómo y cuándo'.",
+    "vector": [
+      0.8,
+      0.2,
+      0.1,
+      0.1
+    ]
+  },
+  {
+    "id": "T50",
+    "texto": "Cuando el otro sube el tono, bajas el tuyo conscientemente. No como táctica de control, sino como señal de que la conversación puede continuar en otro registro.",
+    "vector": [
+      0.6,
+      0.1,
+      0.0,
+      0.0
+    ]
+  },
+  {
+    "id": "T51",
+    "texto": "Interrumpes al interlocutor a mitad de una frase para retomar el control narrativo, con un 'permíteme' que no da tiempo a que el otro termine.",
+    "vector": [
+      0.8,
+      0.5,
+      0.3,
+      0.6
+    ]
+  },
+  {
+    "id": "T52",
+    "texto": "Haces preguntas de clarificación que en realidad buscan poner en evidencia inconsistencias en el argumento del otro. El interrogatorio parece genuino.",
+    "vector": [
+      0.6,
+      0.4,
+      0.7,
+      0.3
+    ]
+  },
+  {
+    "id": "T53",
+    "texto": "Cambias el marco de referencia cada vez que el otro está a punto de ganar el argumento. Mueves los postes sin decir que lo haces.",
+    "vector": [
+      0.9,
+      0.4,
+      0.5,
+      0.3
+    ]
+  },
+  {
+    "id": "T54",
+    "texto": "Usas el silencio estratégicamente: no respondes de inmediato, dejas que el otro llene el vacío, y generalmente se auto-contradice o hace concesiones innecesarias.",
+    "vector": [
+      0.8,
+      0.6,
+      0.2,
+      0.1
+    ]
+  },
+  {
+    "id": "T55",
+    "texto": "Introduces datos o precedentes que no son verificables en el momento: 'según el último informe...' o 'esto ya se evaluó en el trimestre pasado'. Crea asimetría de información.",
+    "vector": [
+      0.7,
+      0.5,
+      0.4,
+      0.2
+    ]
+  },
+  {
+    "id": "T56",
+    "texto": "Muestras acuerdo verbal con el problema pero no con ninguna solución específica. 'Tienes razón en que hay un problema' se convierte en el techo de la conversación.",
+    "vector": [
+      0.8,
+      0.3,
+      0.3,
+      0.2
+    ]
+  },
+  {
+    "id": "T57",
+    "texto": "Usas la historia previa de la relación como argumento: 'siempre hemos trabajado bien, no entiendo por qué ahora...'. Conviertes el conflicto actual en una amenaza al vínculo.",
+    "vector": [
+      0.5,
+      0.2,
+      0.5,
+      0.5
+    ]
+  },
+  {
+    "id": "T58",
+    "texto": "Solicitas que el otro lo ponga por escrito, sabiendo que eso ralentizará el proceso y posiblemente lo desalentará. La burocracia es la barrera.",
+    "vector": [
+      0.7,
+      0.8,
+      0.2,
+      0.2
+    ]
+  },
+  {
+    "id": "T59",
+    "texto": "Aceptas explorar la solicitud 'en la próxima reunión', que está en un horizonte indefinido. Postergación vestida de apertura.",
+    "vector": [
+      0.6,
+      0.5,
+      0.3,
+      0.3
+    ]
+  },
+  {
+    "id": "T60",
+    "texto": "Mencionas que no eres tú quien decide, pero tampoco facilitas el acceso a quien sí decide. Eres el cuello de botella amable.",
+    "vector": [
+      0.5,
+      0.6,
+      0.2,
+      0.2
+    ]
+  },
+  {
+    "id": "T61",
+    "texto": "Comparas la situación con un caso externo peor para relativizar la gravedad: 'al menos aquí tienen X'. El dolor del otro se valida solo en relación con algo más dramático.",
+    "vector": [
+      0.4,
+      0.4,
+      0.7,
+      0.3
+    ]
+  },
+  {
+    "id": "T62",
+    "texto": "Dices que entiendes perfectamente, pero tus preguntas de seguimiento demuestran que no escuchaste el punto central. La comprensión es performativa.",
+    "vector": [
+      0.3,
+      0.4,
+      0.6,
+      0.4
+    ]
+  },
+  {
+    "id": "T63",
+    "texto": "Resumes la posición del otro de forma ligeramente distorsionada, más débil o más extrema de lo que fue planteada. Luego rebates esa versión modificada.",
+    "vector": [
+      0.7,
+      0.4,
+      0.6,
+      0.3
+    ]
+  },
+  {
+    "id": "T64",
+    "texto": "Das la razón en un punto menor para parecer razonable y luego niegas todo lo importante. La concesión pequeña legitima la negativa grande.",
+    "vector": [
+      0.8,
+      0.3,
+      0.4,
+      0.1
+    ]
+  },
+  {
+    "id": "T65",
+    "texto": "Repites el nombre del interlocutor con más frecuencia de lo natural. Crea una intimidad artificial que puede sentirse condescendiente.",
+    "vector": [
+      0.4,
+      0.1,
+      0.5,
+      0.2
+    ]
+  },
+  {
+    "id": "T66",
+    "texto": "Cuando el otro expresa emoción, rápidamente ofreces datos o lógica como respuesta. No niegas la emoción, simplemente la rodeas con información hasta que se diluye.",
+    "vector": [
+      0.5,
+      0.6,
+      0.3,
+      0.2
+    ]
+  },
+  {
+    "id": "T67",
+    "texto": "Formulas la negativa como si fuera una decisión tomada en conjunto previamente: 'como habíamos quedado...' incluso si no hubo tal acuerdo.",
+    "vector": [
+      0.8,
+      0.5,
+      0.5,
+      0.1
+    ]
+  },
+  {
+    "id": "T68",
+    "texto": "Agradeces la honestidad del otro y luego usas exactamente lo que confesó como argumento en tu contra. La vulnerabilidad del otro se convierte en tu ventaja.",
+    "vector": [
+      0.7,
+      0.3,
+      0.5,
+      0.2
+    ]
+  },
+  {
+    "id": "T69",
+    "texto": "Preguntas '¿qué propones tú?' cuando el otro solo busca que tú resuelvas. Transfieres la carga de la solución sin ceder autoridad.",
+    "vector": [
+      0.6,
+      0.4,
+      0.3,
+      0.3
+    ]
+  },
+  {
+    "id": "T70",
+    "texto": "Muestras entusiasmo genuino por las ideas del otro en el momento, y luego en la práctica no implementas nada. El entusiasmo fue real; el compromiso, no.",
+    "vector": [
+      0.5,
+      0.2,
+      0.4,
+      0.2
+    ]
+  },
+  {
+    "id": "T71",
+    "texto": "Adoptas un tono de coach: 'esto es una oportunidad de aprendizaje para ti'. Conviertes el conflicto en una lección para el otro, no en un problema a resolver juntos.",
+    "vector": [
+      0.5,
+      0.2,
+      0.7,
+      0.1
+    ]
+  },
+  {
+    "id": "T72",
+    "texto": "Preguntas sobre el bienestar del otro antes de entrar en el conflicto. Si el otro dice que está bien, reduces la urgencia. Si dice que está mal, haces del estado emocional el foco.",
+    "vector": [
+      0.3,
+      0.1,
+      0.5,
+      0.2
+    ]
+  },
+  {
+    "id": "T73",
+    "texto": "Expresas preocupación genuina por el impacto que la situación está teniendo en el otro, luego aplazas la solución 'para cuando estés en un mejor momento para recibirla'.",
+    "vector": [
+      0.5,
+      0.1,
+      0.4,
+      0.1
+    ]
+  },
+  {
+    "id": "T74",
+    "texto": "Usas el humor leve para bajar la tensión, pero en el proceso también minimizas la gravedad del problema que el otro trajo. La risa suaviza pero también trivializa.",
+    "vector": [
+      0.3,
+      0.2,
+      0.6,
+      0.3
+    ]
+  },
+  {
+    "id": "T75",
+    "texto": "Cuando el otro insiste, dices que necesitas consultar con alguien más antes de decidir. No mientes, pero usas el proceso como escudo para ganar tiempo indefinido.",
+    "vector": [
+      0.6,
+      0.5,
+      0.2,
+      0.3
+    ]
+  },
+  {
+    "id": "T76",
+    "texto": "Aportas datos reales pero seleccionados estratégicamente. No es mentira: es qué información incluyes y cuál omites para construir una imagen parcial.",
+    "vector": [
+      0.7,
+      0.5,
+      0.3,
+      0.2
+    ]
+  },
+  {
+    "id": "T77",
+    "texto": "Te muestras de acuerdo con el diagnóstico del problema pero en desacuerdo con la causa. Ocupas el tiempo en debatir el origen, lo que demora cualquier acción.",
+    "vector": [
+      0.6,
+      0.4,
+      0.4,
+      0.3
+    ]
+  },
+  {
+    "id": "T78",
+    "texto": "Señalas que la propuesta del otro requeriría cambios en varios sistemas o procesos, presentando la complejidad técnica como barrera natural, no como excusa.",
+    "vector": [
+      0.7,
+      0.6,
+      0.2,
+      0.2
+    ]
+  },
+  {
+    "id": "T79",
+    "texto": "Cuando el otro pide una decisión, dices que prefieres tomar tiempo para pensar antes de comprometerte. La reflexión es genuina; también es una forma de controlar el ritmo.",
+    "vector": [
+      0.7,
+      0.3,
+      0.1,
+      0.1
+    ]
+  },
+  {
+    "id": "T80",
+    "texto": "Redireccionas la solicitud hacia un canal oficial: 'lo mejor es que lo pongas en el sistema / plataforma / formulario'. El proceso correcto también puede ser el proceso más lento.",
+    "vector": [
+      0.5,
+      0.7,
+      0.1,
+      0.2
+    ]
+  },
+  {
+    "id": "T81",
+    "texto": "Elevas el nivel de exigencia para aprobar la solicitud: 'necesitaría ver más datos / un análisis más completo / respaldo de tu área'. La barra sube sin previo aviso.",
+    "vector": [
+      0.8,
+      0.5,
+      0.3,
+      0.2
+    ]
+  },
+  {
+    "id": "T82",
+    "texto": "Pides tiempo para revisar el caso en profundidad antes de responder. Si el otro acepta, el plazo se extiende; si insiste, usas su impaciencia como argumento en tu contra.",
+    "vector": [
+      0.6,
+      0.4,
+      0.2,
+      0.3
+    ]
+  },
+  {
+    "id": "T83",
+    "texto": "Te muestras abiertos a explorar opciones, pero cada opción que surge tiene un obstáculo nuevo. La apertura es real; la factibilidad, no.",
+    "vector": [
+      0.7,
+      0.3,
+      0.3,
+      0.2
+    ]
+  },
+  {
+    "id": "T84",
+    "texto": "Cuando estás perdiendo el argumento, cambias el tema a un aspecto tangencial donde tienes más fortaleza. El cambio parece natural si se hace con fluidez.",
+    "vector": [
+      0.8,
+      0.4,
+      0.4,
+      0.4
+    ]
+  },
+  {
+    "id": "T85",
+    "texto": "Usas el lenguaje corporal de escucha activa (asientes, mantienes contacto visual) mientras mentalmente ya decidiste. El cuerpo comunica apertura que la mente no tiene.",
+    "vector": [
+      0.9,
+      0.2,
+      0.3,
+      0.0
+    ]
+  },
+  {
+    "id": "T86",
+    "texto": "Comienzas con un elogio genuino sobre algo que el otro hizo bien antes de entrar al conflicto. El reconocimiento real amortigua lo que viene.",
+    "vector": [
+      0.5,
+      0.1,
+      0.2,
+      0.1
+    ]
+  },
+  {
+    "id": "T87",
+    "texto": "Explicas el impacto que la situación tiene en ti con honestidad y sin dramatismo. No como culpa sino como información que el otro puede considerar.",
+    "vector": [
+      0.4,
+      0.1,
+      0.1,
+      0.3
+    ]
+  },
+  {
+    "id": "T88",
+    "texto": "Pides permiso para dar feedback difícil antes de darlo. El otro acepta y eso cambia la dinámica: ahora es un diálogo que el otro autorizó.",
+    "vector": [
+      0.5,
+      0.1,
+      0.0,
+      0.1
+    ]
+  },
+  {
+    "id": "T89",
+    "texto": "Compartes una experiencia propia de haber estado en el lugar del otro. No para desviar, sino para construir puente antes de plantear el desacuerdo.",
+    "vector": [
+      0.4,
+      0.0,
+      0.1,
+      0.1
+    ]
+  },
+  {
+    "id": "T90",
+    "texto": "Nombras el elefante en la habitación antes de que el otro lo haga. Tomar la iniciativa sobre el tema incómodo te da control narrativo y credibilidad al mismo tiempo.",
+    "vector": [
+      0.6,
+      0.2,
+      0.1,
+      0.2
+    ]
+  },
+  {
+    "id": "T91",
+    "texto": "Cuando el cliente eleva el tono, haces una pausa breve y luego continúas en el mismo tono moderado. No reaccionas a la escalada; la absorbes y estabilizas.",
+    "vector": [
+      0.7,
+      0.3,
+      0.0,
+      0.0
+    ]
+  },
+  {
+    "id": "T92",
+    "texto": "Reconoces el error de tu empresa o área sin defensas ni excusas. La responsabilidad directa desactiva gran parte de la hostilidad antes de proponer la solución.",
+    "vector": [
+      0.4,
+      0.1,
+      0.0,
+      0.1
+    ]
+  },
+  {
+    "id": "T93",
+    "texto": "Ofreces lo que sí puedes hacer antes de decir lo que no puedes. El encuadre positivo cambia la percepción del resultado aunque el límite sea el mismo.",
+    "vector": [
+      0.6,
+      0.2,
+      0.0,
+      0.1
+    ]
+  },
+  {
+    "id": "T94",
+    "texto": "Cuando el interlocutor está frustrado, lo nombras sin dramatizarlo: 'veo que esto no es lo que esperabas'. El reconocimiento simple a veces es suficiente para bajar la tensión.",
+    "vector": [
+      0.5,
+      0.1,
+      0.0,
+      0.0
+    ]
+  },
+  {
+    "id": "T95",
+    "texto": "Propones un siguiente paso concreto aunque no resuelva todo. La acción parcial demuestra compromiso real y mantiene la conversación abierta.",
+    "vector": [
+      0.3,
+      0.1,
+      0.0,
+      0.1
+    ]
+  },
+  {
+    "id": "T96",
+    "texto": "Cuando el otro está en un punto muerto emocional, propones una pausa breve y defines cuándo retomarán. Respetas el estado sin abandonar el proceso.",
+    "vector": [
+      0.4,
+      0.2,
+      0.0,
+      0.0
+    ]
+  },
+  {
+    "id": "T97",
+    "texto": "Explicas tu posición con suficiente transparencia como para que el otro entienda la lógica aunque no la comparta. La comprensión mutua no requiere acuerdo.",
+    "vector": [
+      0.6,
+      0.2,
+      0.0,
+      0.1
+    ]
+  },
+  {
+    "id": "T98",
+    "texto": "Cuando la negociación llega a un punto de bloqueo, propones separar los temas: resolver los puntos de acuerdo primero y dejar los conflictivos para después.",
+    "vector": [
+      0.5,
+      0.2,
+      0.0,
+      0.2
+    ]
+  },
+  {
+    "id": "T99",
+    "texto": "Preguntas directamente cuál es la necesidad detrás de la posición del otro. La mayoría de las negociaciones se desbloquean cuando el foco pasa de posiciones a intereses.",
+    "vector": [
+      0.3,
+      0.1,
+      0.0,
+      0.1
+    ]
+  },
+  {
+    "id": "T100",
+    "texto": "Cuando el acuerdo se cierra, verificas que ambas partes entendieron lo mismo. Evita la ambigüedad de los compromisos que se interpretan diferente al día siguiente.",
+    "vector": [
+      0.2,
+      0.2,
+      0.0,
+      0.0
+    ]
+  }
+]

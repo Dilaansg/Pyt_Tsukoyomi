@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TSUKUYOMI IA | Professional Arena</title>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css/style.css">
+</head>
+
+<body>
+
+    <main id="main-container">
+        <!-- 1. PANTALLA DE CONTEXTO (Escenario) -->
+        <section id="pantalla-escenario" class="screen active">
+            <h1 class="logo">TSUKUYOMI <span class="accent">IA</span></h1>
+
+            <div class="minimal-card">
+                <h2>¿Qué está pasando?</h2>
+                <div class="claude-input-container">
+                    <textarea id="input-escenario" rows="4"
+                        placeholder="Describe el contexto o situación aquí..."></textarea>
+                    <button id="btn-next-to-modes" class="btn-send-claude">
+                        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor"
+                            stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                            <line x1="12" y1="19" x2="12" y2="5"></line>
+                            <polyline points="5 12 12 5 19 12"></polyline>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+        </section>
+
+        <!-- 2. SELECTOR DE MODO -->
+        <section id="pantalla-modos" class="screen">
+            <h1 class="logo">TSUKUYOMI <span class="accent">IA</span></h1>
+
+            <div class="minimal-card">
+                <div class="scenario-preview-box">
+                    <div
+                        style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+                        <small style="margin: 0;">Contexto Analizado</small>
+                        <button class="btn-edit-context" onclick="showScreen('pantalla-escenario')">Editar</button>
+                    </div>
+                    <p id="scenario-preview-text" style="font-size: 0.85rem; color: var(--text-primary);"></p>
+                </div>
+
+                <h2>Elige tu enfoque</h2>
+                <div style="display: flex; align-items: center; gap: 15px; margin-bottom: var(--spacing-lg); background: var(--bg-secondary); padding: 10px 15px; border-radius: 8px; border: 1px solid var(--border-light);">
+                    <p style="color: var(--text-primary); margin: 0; font-weight: 500;">¿Cómo quieres que Tsukoyomi te asista?</p>
+                    <div style="flex-grow: 1;"></div>
+                    <label style="font-size: 0.95rem; font-weight: 700; color: var(--accent-crimson);">Edad del Usuario:</label>
+                    <input type="number" id="user-age" value="25" min="10" max="99" 
+                        style="width: 60px; border: 2px solid var(--border-light); border-radius: 6px; padding: 4px 8px; font-size: 1rem; font-weight: bold; background: #FFF; color: var(--text-primary); text-align: center;">
+                </div>
+
+                <div class="modes-grid-large">
+                    <button class="mode-card-large" onclick="setModo('simulador')">
+                        <img src="img/simulador.png" alt="Simulador" class="mode-icon">
+                        <h3>Simulador de Arena</h3>
+                        <p>Prueba diferentes escenarios de conversación y observa resultados potenciales en un entorno
+                            seguro antes de actuar.</p>
+                    </button>
+                    <button class="mode-card-large" onclick="setModo('consejo')">
+                        <img src="img/estrategia.png" alt="Estratega" class="mode-icon">
+                        <h3>Estratega (Consejo)</h3>
+                        <p>Recibe un plan de acción personalizado y consejos tácticos basados en un análisis profundo de
+                            la situación.</p>
+                    </button>
+                </div>
+            </div>
+        </section>
+
+        <!-- 3. PANTALLA DE ARENA (Chat) -->
+        <section id="pantalla-chat" class="screen">
+            <header class="arena-header">
+                <div>
+                    <h3 id="chat-mode-title"
+                        style="font-size: 0.9rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em;">
+                        Simulador</h3>
+                    <span style="font-size: 0.75rem; color: #2ecc71;">● Conexión Activa</span>
+                </div>
+                <button id="btn-restart"
+                    style="background: transparent; color: var(--text-secondary); font-size: 1.2rem; padding: 4px;">✕</button>
+            </header>
+
+            <div id="chat-container">
+                <div id="chat-box">
+                    <!-- Los mensajes se inyectan aquí -->
+                </div>
+            </div>
+
+            <footer class="chat-footer">
+                <div class="input-wrapper">
+                    <textarea id="chat-input" rows="1" placeholder="Formula tu mensaje..."></textarea>
+                    <button id="btn-enviar">
+                        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor"
+                            stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                            <line x1="12" y1="19" x2="12" y2="5"></line>
+                            <polyline points="5 12 12 5 19 12"></polyline>
+                        </svg>
+                    </button>
+                </div>
+            </footer>
+        </section>
+
+        <!-- PANTALLA 4: MODAL DE FEEDBACK (Overlay) -->
+        <div id="pantalla-feedback" class="modal-overlay">
+            <div class="modal-content">
+                <h2>Cerrar Sesión</h2>
+                <p style="color: var(--text-secondary); margin-bottom: var(--spacing-lg);">
+                    ¿Qué tan efectiva fue la respuesta de la IA?
+                </p>
+
+                <div class="rating-container">
+                    <span class="star" onclick="setRating(1)">★</span>
+                    <span class="star" onclick="setRating(2)">★</span>
+                    <span class="star" onclick="setRating(3)">★</span>
+                    <span class="star" onclick="setRating(4)">★</span>
+                    <span class="star" onclick="setRating(5)">★</span>
+                </div>
+                <input type="hidden" id="input-rating" value="0">
+
+                <textarea id="input-comentario" rows="3" placeholder="Observaciones (opcional)..."></textarea>
+
+                <div
+                    style="margin-top: var(--spacing-lg); display: flex; flex-direction: column; gap: 8px; width: 100%;">
+                    <button id="btn-enviar-feedback">Enviar y Finalizar</button>
+                    <button class="btn-text" onclick="closeFeedback()">Tal vez luego</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="main-footer">
+            <span class="footer-item">Contact Us</span>
+            <span class="footer-divider">•</span>
+            <span class="footer-item">Developed by <strong>Dilaansg</strong></span>
+        </div>
+
+        <div class="debug-panel" style="display:none;">
+            <pre id="output-json"></pre>
+        </div>
+    </main>
+
+    <script src="js/biometria.js"></script>
+</body>
+
+</html>

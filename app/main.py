@@ -1,0 +1,193 @@
+import os
+import json
+from pathlib import Path
+from datetime import datetime
+import time
+from contextlib import asynccontextmanager
+from fastapi import FastAPI, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
+import google.generativeai as genai
+
+from app.config.settings import config
+from app.api.schemas import PeticionSimulacion, RespuestaSimulacion, FeedbackSession
+from app.core.nlp_service import NLPService
+from app.core.friction_model import RedMediacionMLP, predecir
+from app.core.rag_translator import TraductorSemanticoV4
+from app.core.schemas import PayloadFaseA, PayloadFaseB
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """
+    Gestiona el ciclo de vida del servidor. 
+    Carga modelos en memoria para optimizar la latencia en inferencia.
+    """
+    print("\n[TSUKOYOMI-IA] Inicializando servicios...")
+    genai.configure(api_key=config.gemini_api_key)
+
+    # Carga de motores de IA en el estado global
+    app.state.nlp_service = NLPService()
+    
+    mlp_model = RedMediacionMLP()
+    mlp_model.eval()
+    app.state.modelo_mlp = mlp_model
+
+    app.state.traductor = TraductorSemanticoV4()
+
+    print("[TSUKOYOMI-IA] Todos los motores cargados correctamente.\n")
+    yield
+
+app = FastAPI(
+    title="Tsukoyomi-IA", 
+    description="Sistema Modular de Simulación de Fricción Social",
+    version="3.0",
+    lifespan=lifespan
+)
+
+# Permite que el navegador (Frontend) hable con esta API sin problemas de seguridad.
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+# Servimos los archivos estáticos (HTML, CSS, JS) en la ruta /static
+app.mount("/static", StaticFiles(directory="static"), name="static")
+
+@app.post("/simular-friccion", response_model=RespuestaSimulacion)
+def simular_friccion(peticion: PeticionSimulacion):
+    """
+    Orquesta el pipeline de procesamiento A -> B -> C -> D.
+    """
+    try:
+        nlp = app.state.nlp_service
+        mlp = app.state.modelo_mlp
+        rag = app.state.traductor
+
+        latencias = {}
+
+        # FASE A: Análisis NLP de Contexto Social
+        t_nlp_start = time.time()
+        # FIX: Antes ignorábamos el escenario en el primer mensaje. Ahora lo analizamos.
+        texto_a_analizar = peticion.escenario if "Inicia la conversación." in peticion.texto_usuario else peticion.texto_usuario
+        
+        # Validación de seguridad: si el escenario está vacío, usamos valores neutros.
+        if not texto_a_analizar.strip():
+            soc_a, soc_p, soc_u, soc_v = 0.1, 0.0, 0.1, 0.5
+        else:
+            soc_a, soc_p, soc_u, soc_v = nlp.extraer_metricas_sociales(texto_a_analizar)
+        
+        fase_a = PayloadFaseA(soc_A=soc_a, soc_P=soc_p, soc_U=soc_u, soc_V=soc_v)
+        latencias["FASE_A_NLP"] = round(time.time() - t_nlp_start, 3)
+
+        # FASE B: Predicción de Fricción vía MLP (Biometría)
+        t_mlp_start = time.time()
+        metadatos_dict = peticion.metadatos.model_dump()
+        fase_b = PayloadFaseB(**metadatos_dict)
+        prediccion = predecir(mlp, fase_a, fase_b)
+        latencias["FASE_B_MLP"] = round(time.time() - t_mlp_start, 3)
+        print(f"\n[MLP-DEBUG] Input Biometría: {metadatos_dict}")
+        print(f"[MLP-DEBUG] Fricción Predicha: {prediccion.to_dict()}\n")
+
+        # FASE C: Traducción Semántica y Recuperación de Tácticas (Álgebra Lineal)
+        t_rag_start = time.time()
+        # Ahora el traductor retorna prompt, nombres de tácticas e IDs de tácticas
+        prompt_final, tacticas_nombres, tacticas_ids = rag.traducir(peticion.modo, prediccion, fase_a, peticion.escenario)
+        latencias["FASE_C_VECTORIAL"] = round(time.time() - t_rag_start, 3)
+
+        # FASE D: Generación de Respuesta con LLM (Gemini) con ROTACIÓN AUTOMÁTICA
+        t_llm_start = time.time()
+        
+        # FIX: Inyectamos el escenario como un recordatorio persistente al inicio del historial de parts
+        # para que el modelo nunca pierda el hilo de qué situación está simulando.
+        historial_gemini = []
+        if peticion.escenario:
+            historial_gemini.append({"role": "user", "parts": [f"CONTEXTO DEL ESCENARIO (No respondas a esto, solo tenlo en cuenta): {peticion.escenario}"]})
+            historial_gemini.append({"role": "model", "parts": ["Entendido. Mantendré este contexto durante toda la simulación."]})
+        
+        historial_gemini.extend([{"role": m.role, "parts": [m.content]} for m in peticion.historial])
+        
+        # Rotación automática de modelos ante errores de cuota (ResourceExhausted / 429)
+        respuesta_llm = None
+        modelo_usado = None
+        
+        for model_variant in config.gemini_model_list:
+            try:
+                print(f"[LLM-FALLBACK] Probando con modelo: {model_variant}")
+                modelo_gemini = genai.GenerativeModel(
+                    model_name=model_variant,
+                    system_instruction=prompt_final,
+                )
+                chat = modelo_gemini.start_chat(history=historial_gemini)
+                respuesta_llm = chat.send_message(peticion.texto_usuario)
+                modelo_usado = model_variant
+                break # Éxito: Salimos del bucle
+            except Exception as e:
+                error_str = str(e).lower()
+                # Si es un error de cuota o créditos, probamos el siguiente.
+                # Si es un error crítico (API key inválida), paramos inmediatamente.
+                if "429" in error_str or "quota" in error_str or "exhausted" in error_str or "credit" in error_str:
+                    print(f"[LLM-FALLBACK] Error de cuota en {model_variant}. Saltando al siguiente...")
+                    continue 
+                else:
+                    # Otros errores, abortamos el bucle.
+                    print(f"[LLM-ERROR] Error catastrófico: {e}")
+                    raise e
+
+        if not respuesta_llm:
+            raise HTTPException(status_code=503, detail="Todos los modelos configurados han agotado su cuota diaria.")
+
+        latencias["FASE_D_LLM"] = round(time.time() - t_llm_start, 3)
+        # FIX: Evitamos sumar el nombre del modelo (str) a las latencias numéricas
+        solo_numeros = [v for v in latencias.values() if isinstance(v, (int, float))]
+        latencias["TOTAL"] = round(sum(solo_numeros), 3)
+        latencias["MODEL_USED"] = modelo_usado
+
+        # Log of latencies
+        try:
+            log_file = Path("app/data/latency_logs.jsonl")
+            with open(log_file, "a", encoding="utf-8") as f:
+                f.write(json.dumps({"timestamp": datetime.now().isoformat(), "latencias": latencias, "modo": peticion.modo}, ensure_ascii=False) + "\n")
+        except:
+            pass
+
+        return RespuestaSimulacion(
+            respuesta_bot=respuesta_llm.text,
+            friccion_calculada=prediccion.to_dict(),
+            contexto_nlp_extraido={
+                "soc_A": round(fase_a.soc_A, 3), "soc_P": round(fase_a.soc_P, 3),
+                "soc_U": round(fase_a.soc_U, 3), "soc_V": round(fase_a.soc_V, 3),
+            },
+            tacticas_usadas=tacticas_nombres,
+            id_tacticas_usadas=tacticas_ids,
+            prompt_inyectado=prompt_final,
+            latencias=latencias,
+            modelo_utilizado=modelo_usado
+        )
+
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/feedback")
+def store_feedback(feedback: FeedbackSession):
+    """
+    Persiste el feedback del usuario en un dataset JSONL para posterior entrenamiento/calibración.
+    """
+    try:
+        data_dir = Path("app/data")
+        data_dir.mkdir(parents=True, exist_ok=True)
+        
+        log_file = data_dir / "dataset_interacciones.jsonl"
+        
+        feedback_dict = feedback.model_dump()
+        feedback_dict["timestamp"] = datetime.now().isoformat()
+        
+        with open(log_file, "a", encoding="utf-8") as f:
+            f.write(json.dumps(feedback_dict, ensure_ascii=False) + "\n")
+            
+        return {"status": "success", "message": "Feedback recibido correctamente"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error guardando feedback: {str(e)}")

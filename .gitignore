@@ -4,6 +4,15 @@ venv/
 env/
 bin/
 
+# Carpetas de pruebas y basura
+pruebas_anteriores/
+__pycache__/
+*.pyc
+
+# Datos y logs dinámicos
+app/data/dataset_interacciones.jsonl
+app/data/latency_logs.jsonl
+
 # Variables de entorno (SECRETOS)
 .env
 .env.local
@@ -12,3 +21,4 @@ bin/
 # Archivos de configuración de IDE
 .vscode/
 .antigravity/
+.aider*
