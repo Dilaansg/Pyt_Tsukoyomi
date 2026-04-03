@@ -8,10 +8,6 @@ class Settings(BaseSettings):
     gemini_api_key: str = ""
     # RANKING DESCENDENTE: Intentará con el primero, si falla va al siguiente.
     gemini_model_list: list[str] = [
-        "models/gemini-3.1-pro-preview",
-        "models/gemini-3-pro-preview",
-        "models/gemini-2.5-pro",
-        "models/gemini-pro-latest",
         "models/gemini-3.1-flash-lite-preview",
         "models/gemini-3-flash-preview",
         "models/gemini-2.5-flash",

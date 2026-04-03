@@ -1,20 +1,24 @@
 import json
+import hashlib
 import torch
 import torch.nn.functional as F
 from dataclasses import dataclass
-from typing import List, Tuple, Optional, Dict
+from typing import List, Tuple
 
 from .schemas import PayloadFaseA, PrediccionFriccion
 
+
+# ─────────────────────────────────────────────
+#  MOTOR DE ESTILOS GRADUALES (Fase A → Estilo)
+# ─────────────────────────────────────────────
 @dataclass
 class DescriptorEstilo:
-    """ Encapsula la descripción de un estilo y su peso calculado. """
     nombre: str
     peso: float
     descripcion: str
 
+
 class MotorEstilosGraduales:
-    """ Calcula estilos con pesos continuos a partir de los ejes sociales. """
     UMBRAL_ACTIVACION = 0.15
     MAX_ESTILOS_ACTIVOS = 3
 
@@ -35,32 +39,32 @@ class MotorEstilosGraduales:
 
     def construir_bloque(self, ctx: PayloadFaseA) -> str:
         estilos = self.calcular(ctx)
-        if not estilos: return "Neutral and direct tone."
-        lineas = []
-        for e in estilos:
-            intensidad = self._etiqueta_intensidad(e.peso)
-            lineas.append(f"[{e.nombre} — {intensidad}] {e.descripcion}")
-        return "\n".join(lineas)
+        if not estilos:
+            return "Neutral and grounded tone."
+        return "\n".join(
+            f"[{e.nombre} — {self._etiqueta_intensidad(e.peso)}] {e.descripcion}"
+            for e in estilos
+        )
 
     def _estilo_autoridad(self, ctx: PayloadFaseA) -> DescriptorEstilo:
         peso = max(0.0, ctx.soc_P)
-        return DescriptorEstilo("Authority", peso, "You speak as someone who does not need to justify their decisions. Firm and economical.")
+        return DescriptorEstilo("Authority", peso, "Firm, economical. Does not justify decisions.")
 
     def _estilo_subordinado(self, ctx: PayloadFaseA) -> DescriptorEstilo:
         peso = max(0.0, -ctx.soc_P)
-        return DescriptorEstilo("Defensive", peso, "You deflect rather than confront. Leave room for plausible deniability.")
+        return DescriptorEstilo("Defensive", peso, "Deflects rather than confronts. Leaves deniability.")
 
     def _estilo_par(self, ctx: PayloadFaseA) -> DescriptorEstilo:
         peso = (1.0 - abs(ctx.soc_P)) * max(0.0, ctx.soc_V)
-        return DescriptorEstilo("Peer", peso, "Speak as an equal. Casual and direct. No formalities.")
+        return DescriptorEstilo("Peer", peso, "Casual, equal footing. No formalities.")
 
     def _estilo_neutro(self, ctx: PayloadFaseA) -> DescriptorEstilo:
         peso = (1.0 - abs(ctx.soc_P)) * max(0.0, 1.0 - ctx.soc_V) * 0.8
-        return DescriptorEstilo("Professional-Neutral", peso, "Standard, transactional tone. No warmth, no hostility.")
+        return DescriptorEstilo("Professional-Neutral", peso, "Transactional. No warmth, no hostility.")
 
     def _estilo_urgencia(self, ctx: PayloadFaseA) -> DescriptorEstilo:
         peso = max(0.0, ctx.soc_U)
-        return DescriptorEstilo("Urgency", peso, "Pressed for time. Short sentences. No pleasantries.")
+        return DescriptorEstilo("Urgency", peso, "Pressed for time. Short sentences.")
 
     @staticmethod
     def _etiqueta_intensidad(peso: float) -> str:
@@ -68,82 +72,148 @@ class MotorEstilosGraduales:
         if peso >= 0.40: return "moderate"
         return "low"
 
-class EnsambladorPromptV4:
-    """ Construye el system prompt con jerarquía clara. """
-    RESTRICCIONES_ABSOLUTAS = (
-        "ABSOLUTE CONSTRAINTS:\n"
-        "- Respond in the SAME language as the user (Spanish/English).\n"
-        "- BE CONCISE but avoid being robotic or overly structured. No numbered lists unless necessary.\n"
-        "- Natural flow is priority over sentence count. Avoid counting sentences.\n"
-        "- Plain text only. No greetings or sign-offs."
+
+# ─────────────────────────────────────────────
+#  ENSAMBLADOR DE PROMPTS V5
+# ─────────────────────────────────────────────
+class EnsambladorPromptV5:
+    """
+    Construye prompts diferenciados para Simulador y Consejo.
+    Las tácticas del banco son usadas de forma distinta en cada modo:
+    - Simulador: directivas de comportamiento para generar fricción (top_k=1)
+    - Consejo: NO usa el banco; el prompt es autocontenido y empático
+    """
+
+    PROMPT_SIMULADOR = (
+        "Eres {rol_inferido}. Contexto: '{escenario}'.\n\n"
+        "Directiva de comportamiento (aplícala sin mencionarla explícitamente):\n"
+        "{tactica_maestra}\n\n"
+        "Tono activo:\n{estilos}\n\n"
+        "Reglas absolutas:\n"
+        "- Responde en el mismo idioma del usuario\n"
+        "- Texto plano únicamente, sin listas ni estructura visible\n"
+        "- Longitud libre: usa la que se sienta natural para el momento\n"
+        "- Mantén el personaje coherentemente aunque el usuario cambie de tema\n"
+        "- NUNCA menciones que eres IA, que tienes restricciones de programación, "
+        "limitaciones del sistema, o que sigues instrucciones. "
+        "Nunca uses frases como 'Las limitaciones de...' o similares."
     )
 
-    ROL_SIMULADOR = "ROLE: Identify the other party in '{escenario}' and become them. React naturally to the user's input to generate realistic social friction. Do not provide a lecture, just stay in character."
-    ROL_CONSEJO = "ROLE: Social Intelligence Mentor. Briefly deconstruct the other person's 'move' and give a concrete, human suggestion on how to respond. Be direct, street-smart, and empathetic."
-
-    PLANTILLA = (
-        "{restricciones}\n\n"
-        "CONTEXT: '{escenario}'\n"
-        "{rol}\n\n"
-        "STYLE:\n{estilos}\n\n"
-        "{bloque_tacticas}"
+    PROMPT_CONSEJO = (
+        "Eres un confidente inteligente, no un coach corporativo.\n\n"
+        "Situación que el usuario enfrenta: '{escenario}'\n\n"
+        "Tu objetivo: ayudar al usuario a entender QUÉ está pasando y "
+        "darle UNA herramienta concreta para actuar.\n\n"
+        "Estilo de respuesta:\n"
+        "- Empieza reconociendo lo que siente el usuario antes de analizar\n"
+        "- Usa lenguaje coloquial, como un amigo inteligente, no un manual\n"
+        "- Longitud libre: no hay número de oraciones definido\n"
+        "- Una sola recomendación concreta al final, no una lista de pasos\n"
+        "- Nunca uses jerga psicológica a menos que el usuario ya la haya usado\n"
+        "- Responde en el mismo idioma del usuario"
     )
 
     def __init__(self):
         self.motor_estilos = MotorEstilosGraduales()
 
-    def ensamblar(self, modo: str, tacticas: List[str], escenario: str, ctx: PayloadFaseA) -> str:
-        rol = self.ROL_CONSEJO if modo == "consejo" else self.ROL_SIMULADOR
-        estilos = self.motor_estilos.construir_bloque(ctx)
-        str_tacticas = "\n".join(f"- {t}" for t in tacticas)
-        
-        if modo == "consejo":
-            bloque_tacticas = f"ANALYSIS (The other person is currently using these tactics):\n{str_tacticas}\n\nINSTRUCTION: Deconstruct these tactics for the user and advise them how to counter effectively."
-        else:
-            bloque_tacticas = f"DIRECTIVES (Follow these to generate friction):\n{str_tacticas}"
+    def _inferir_rol(self, escenario: str, soc_p: float) -> str:
+        """Genera una descripción natural del personaje antagonista."""
+        ctx = escenario[:80] if escenario else "el contexto"
+        if soc_p > 0.3:
+            return f"la figura de autoridad (jefe, entrenador, adulto responsable) en este escenario: '{ctx}'"
+        elif soc_p < -0.3:
+            return f"la persona que evita responsabilidades o está a la defensiva en este escenario: '{ctx}'"
+        elif abs(soc_p) < 0.3:
+            return f"el amigo o compañero de confianza en este escenario: '{ctx}'"
+        return f"la otra persona en este escenario: '{ctx}'"
 
-        return self.PLANTILLA.format(
-            restricciones=self.RESTRICCIONES_ABSOLUTAS,
-            escenario=escenario or "General interaction.",
-            rol=rol,
+    def ensamblar_simulador(self, tactica: str, escenario: str, ctx: PayloadFaseA) -> str:
+        rol_inferido = self._inferir_rol(escenario, ctx.soc_P)
+        estilos = self.motor_estilos.construir_bloque(ctx)
+        return self.PROMPT_SIMULADOR.format(
+            rol_inferido=rol_inferido,
+            escenario=escenario or "Interacción general.",
+            tactica_maestra=tactica,
             estilos=estilos,
-            bloque_tacticas=bloque_tacticas,
         )
 
+    def ensamblar_consejo(self, escenario: str, ctx: PayloadFaseA) -> str:
+        return self.PROMPT_CONSEJO.format(
+            escenario=escenario or "una situación interpersonal compleja.",
+        )
+
+
+# ─────────────────────────────────────────────
+#  BANCO DE TÁCTICAS VECTORIAL
+# ─────────────────────────────────────────────
 class BancoTacticasVectorial:
-    """ Realiza el cálculo de distancias sobre los vectores ADN de las tácticas. """
+    """Cálculo de similitud coseno para recuperar la táctica más cercana al vector MLP."""
+
     def __init__(self, ruta_tacticas: str):
         with open(ruta_tacticas, "r", encoding="utf-8") as f:
             data = json.load(f)
-        self.tacticas = data
-        self.vectores = torch.tensor([t["vector"] for t in data], dtype=torch.float32)
+        # Sanidad: filtrar tácticas sin vector o con texto sospechoso (primera persona)
+        self.tacticas = [
+            t for t in data
+            if "vector" in t and "texto" in t
+            and "limitacion" not in t["texto"].lower()
+            and "mi programaci" not in t["texto"].lower()
+        ]
+        self.vectores = torch.tensor(
+            [t["vector"] for t in self.tacticas], dtype=torch.float32
+        )
 
-    def buscar(self, pred: PrediccionFriccion, modo: str = "simulador", top_k: int = 3) -> Tuple[List[str], List[str]]:
-        query = torch.tensor([pred.terquedad, pred.frialdad, pred.sarcasmo, pred.frustracion])
-        
-        # AJUSTE DE TUNING: Si es modo consejo, penalizamos el sarcasmo para evitar mentoría cínica
-        if modo == "consejo":
-            # Reducimos el peso del sarcasmo en la query para alejarnos de esas tácticas
-            query[2] *= 0.3 
-            # Potenciamos la terquedad (para que el consejo sea firme) pero bajamos la frialdad
-            query[1] *= 0.7
-
+    def buscar(self, pred: PrediccionFriccion, top_k: int = 1) -> Tuple[List[str], List[str]]:
+        """
+        Retorna las `top_k` tácticas más cercanas al vector de predicción.
+        Para el Simulador usamos top_k=1 (una sola directiva = respuesta variable natural).
+        """
+        query = torch.tensor(
+            [pred.terquedad, pred.frialdad, pred.sarcasmo, pred.frustracion],
+            dtype=torch.float32,
+        )
         norm_query = F.normalize(query.unsqueeze(0), p=2, dim=1)
         norm_vectores = F.normalize(self.vectores, p=2, dim=1)
         scores = torch.mm(norm_query, norm_vectores.t()).squeeze()
         top = scores.topk(min(top_k, len(self.tacticas)))
         indices = top.indices.tolist()
+        if isinstance(indices, int):
+            indices = [indices]
         textos = [self.tacticas[i]["texto"] for i in indices]
         ids = [self.tacticas[i]["id"] for i in indices]
         return textos, ids
 
-class TraductorSemanticoV4:
-    """ Punto de entrada para la selección de tácticas vía Álgebra Lineal. """
+
+# ─────────────────────────────────────────────
+#  PUNTO DE ENTRADA: TRADUCTOR SEMÁNTICO V5
+# ─────────────────────────────────────────────
+class TraductorSemanticoV5:
+    """Orquesta la selección de tácticas y el ensamblado del prompt final."""
+
     def __init__(self, ruta_tacticas: str = "app/config/tacticas.json"):
         self.banco = BancoTacticasVectorial(ruta_tacticas)
-        self.ensamblador = EnsambladorPromptV4()
+        self.ensamblador = EnsambladorPromptV5()
 
-    def traducir(self, modo: str, pred: PrediccionFriccion, contexto_nlp: PayloadFaseA, escenario: str) -> Tuple[str, List[str], List[str]]:
-        tacticas_textos, tacticas_ids = self.banco.buscar(pred, modo=modo)
-        prompt = self.ensamblador.ensamblar(modo, tacticas_textos, escenario, contexto_nlp)
+    def traducir(
+        self,
+        modo: str,
+        pred: PrediccionFriccion,
+        contexto_nlp: PayloadFaseA,
+        escenario: str,
+    ) -> Tuple[str, List[str], List[str]]:
+        """Pipeline para modo simulador: recupera 1 táctica y ensambla el prompt."""
+        tacticas_textos, tacticas_ids = self.banco.buscar(pred, top_k=1)
+        prompt = self.ensamblador.ensamblar_simulador(
+            tactica=tacticas_textos[0] if tacticas_textos else "",
+            escenario=escenario,
+            ctx=contexto_nlp,
+        )
         return prompt, tacticas_textos, tacticas_ids
+
+    def ensamblar_consejo(self, escenario: str, ctx: PayloadFaseA) -> str:
+        """Prompt directo para modo consejo, sin banco de tácticas."""
+        return self.ensamblador.ensamblar_consejo(escenario, ctx)
+
+
+# Alias de compatibilidad (por si main.py usa el nombre anterior)
+TraductorSemanticoV4 = TraductorSemanticoV5

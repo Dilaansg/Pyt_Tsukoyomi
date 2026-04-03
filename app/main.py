@@ -1,5 +1,6 @@
 import os
 import json
+import torch
 from pathlib import Path
 from datetime import datetime
 import time
@@ -14,7 +15,7 @@ from app.api.schemas import PeticionSimulacion, RespuestaSimulacion, FeedbackSes
 from app.core.nlp_service import NLPService
 from app.core.friction_model import RedMediacionMLP, predecir
 from app.core.rag_translator import TraductorSemanticoV4
-from app.core.schemas import PayloadFaseA, PayloadFaseB
+from app.core.schemas import PayloadFaseA, PayloadFaseB, PrediccionFriccion
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -29,6 +30,10 @@ async def lifespan(app: FastAPI):
     app.state.nlp_service = NLPService()
     
     mlp_model = RedMediacionMLP()
+    seed_path = Path("app/models/mlp_seed.pt")
+    if seed_path.exists():
+        mlp_model.load_state_dict(torch.load(str(seed_path), map_location="cpu"))
+        print("[TSUKOYOMI-IA] Pesos seed cargados desde app/models/mlp_seed.pt")
     mlp_model.eval()
     app.state.modelo_mlp = mlp_model
 
@@ -81,20 +86,30 @@ def simular_friccion(peticion: PeticionSimulacion):
         fase_a = PayloadFaseA(soc_A=soc_a, soc_P=soc_p, soc_U=soc_u, soc_V=soc_v)
         latencias["FASE_A_NLP"] = round(time.time() - t_nlp_start, 3)
 
-        # FASE B: Predicción de Fricción vía MLP (Biometría)
-        t_mlp_start = time.time()
-        metadatos_dict = peticion.metadatos.model_dump()
-        fase_b = PayloadFaseB(**metadatos_dict)
-        prediccion = predecir(mlp, fase_a, fase_b)
-        latencias["FASE_B_MLP"] = round(time.time() - t_mlp_start, 3)
-        print(f"\n[MLP-DEBUG] Input Biometría: {metadatos_dict}")
-        print(f"[MLP-DEBUG] Fricción Predicha: {prediccion.to_dict()}\n")
+        # BIFURCACIÓN: modo consejo salta MLP y RAG (pipeline corto)
+        if peticion.modo == "consejo":
+            prediccion = PrediccionFriccion(0.0, 0.0, 0.0, 0.0)
+            tacticas_nombres = []
+            tacticas_ids = []
+            prompt_final = rag.ensamblar_consejo(peticion.escenario, fase_a)
+            latencias["modo_efectivo"] = "consejo_directo"
+        else:
+            # FASE B: Predicción de Fricción vía MLP (Biometría)
+            t_mlp_start = time.time()
+            metadatos_dict = peticion.metadatos.model_dump()
+            fase_b = PayloadFaseB(**metadatos_dict)
+            prediccion = predecir(mlp, fase_a, fase_b)
+            latencias["FASE_B_MLP"] = round(time.time() - t_mlp_start, 3)
+            print(f"\n[MLP-DEBUG] Input Biometría: {metadatos_dict}")
+            print(f"[MLP-DEBUG] Fricción Predicha: {prediccion.to_dict()}\n")
 
-        # FASE C: Traducción Semántica y Recuperación de Tácticas (Álgebra Lineal)
-        t_rag_start = time.time()
-        # Ahora el traductor retorna prompt, nombres de tácticas e IDs de tácticas
-        prompt_final, tacticas_nombres, tacticas_ids = rag.traducir(peticion.modo, prediccion, fase_a, peticion.escenario)
-        latencias["FASE_C_VECTORIAL"] = round(time.time() - t_rag_start, 3)
+            # FASE C: Selección vectorial de táctica (top_k=1)
+            t_rag_start = time.time()
+            prompt_final, tacticas_nombres, tacticas_ids = rag.traducir(
+                peticion.modo, prediccion, fase_a, peticion.escenario
+            )
+            latencias["FASE_C_VECTORIAL"] = round(time.time() - t_rag_start, 3)
+            latencias["modo_efectivo"] = "simulador_completo"
 
         # FASE D: Generación de Respuesta con LLM (Gemini) con ROTACIÓN AUTOMÁTICA
         t_llm_start = time.time()
@@ -141,10 +156,7 @@ def simular_friccion(peticion: PeticionSimulacion):
         latencias["FASE_D_LLM"] = round(time.time() - t_llm_start, 3)
         # FIX: Evitamos sumar el nombre del modelo (str) a las latencias numéricas
         solo_numeros = [v for v in latencias.values() if isinstance(v, (int, float))]
-        latencias["TOTAL"] = round(sum(solo_numeros), 3)
-        latencias["MODEL_USED"] = modelo_usado
-
-        # Log of latencies
+        # Log of latencies (Solo tiempos y metadatos técnicos)
         try:
             log_file = Path("app/data/latency_logs.jsonl")
             with open(log_file, "a", encoding="utf-8") as f:
