@@ -6,6 +6,8 @@ class Settings(BaseSettings):
     Lee variables de entorno desde el archivo .env.
     """
     gemini_api_key: str = ""
+    mongodb_uri: str = ""
+
     # RANKING DESCENDENTE: Intentará con el primero, si falla va al siguiente.
     gemini_model_list: list[str] = [
         "models/gemini-3.1-flash-lite-preview",

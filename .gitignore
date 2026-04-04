@@ -22,3 +22,8 @@ app/data/latency_logs.jsonl
 .vscode/
 .antigravity/
 .aider*
+
+# Rutas temporales de Render y HF
+/tmp/
+app/models/*.pt
+app/data/*.jsonl

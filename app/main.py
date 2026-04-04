@@ -17,6 +17,8 @@ from app.core.friction_model import RedMediacionMLP, predecir
 from app.core.rag_translator import TraductorSemanticoV4
 from app.core.schemas import PayloadFaseA, PayloadFaseB, PrediccionFriccion
 
+from app.db.mongo import ping, col_sesiones, col_latencias
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """
@@ -25,6 +27,18 @@ async def lifespan(app: FastAPI):
     """
     print("\n[TSUKOYOMI-IA] Inicializando servicios...")
     genai.configure(api_key=config.gemini_api_key)
+
+    # MongoDB
+    if config.mongodb_uri:
+        mongo_ok = await ping()
+        if mongo_ok:
+            print("[TSUKOYOMI-IA] MongoDB Atlas conectado.")
+        else:
+            print("[TSUKOYOMI-IA] ADVERTENCIA: MongoDB no responde. Modo fallback (solo archivos locales).")
+    else:
+        print("[TSUKOYOMI-IA] mongodb_uri no configurado. Modo local.")
+
+    app.state.mongo_disponible = config.mongodb_uri != "" and (await ping() if config.mongodb_uri else False)
 
     # Carga de motores de IA en el estado global
     app.state.nlp_service = NLPService()
@@ -60,8 +74,18 @@ app.add_middleware(
 # Servimos los archivos estáticos (HTML, CSS, JS) en la ruta /static
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
+@app.get("/health")
+async def health():
+    from app.db.mongo import ping
+    mongo_ok = await ping() if config.mongodb_uri else False
+    return {
+        "status": "ok",
+        "mongodb": "conectado" if mongo_ok else "no disponible",
+        "version": "3.0"
+    }
+
 @app.post("/simular-friccion", response_model=RespuestaSimulacion)
-def simular_friccion(peticion: PeticionSimulacion):
+async def simular_friccion(peticion: PeticionSimulacion):
     """
     Orquesta el pipeline de procesamiento A -> B -> C -> D.
     """
@@ -159,8 +183,17 @@ def simular_friccion(peticion: PeticionSimulacion):
         # Log of latencies (Solo tiempos y metadatos técnicos)
         try:
             log_file = Path("app/data/latency_logs.jsonl")
+            log_file.parent.mkdir(parents=True, exist_ok=True)
             with open(log_file, "a", encoding="utf-8") as f:
                 f.write(json.dumps({"timestamp": datetime.now().isoformat(), "latencias": latencias, "modo": peticion.modo}, ensure_ascii=False) + "\n")
+            
+            if app.state.mongo_disponible:
+                from app.db.mongo import col_latencias
+                await col_latencias().insert_one({
+                    "timestamp": datetime.now().isoformat(),
+                    "latencias": latencias,
+                    "modo": peticion.modo
+                })
         except:
             pass
 
@@ -184,21 +217,26 @@ def simular_friccion(peticion: PeticionSimulacion):
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/feedback")
-def store_feedback(feedback: FeedbackSession):
+async def store_feedback(feedback: FeedbackSession):
     """
-    Persiste el feedback del usuario en un dataset JSONL para posterior entrenamiento/calibración.
+    Persiste el feedback del usuario en un dataset JSONL local y MongoDB Atlas.
     """
     try:
-        data_dir = Path("app/data")
-        data_dir.mkdir(parents=True, exist_ok=True)
-        
-        log_file = data_dir / "dataset_interacciones.jsonl"
-        
         feedback_dict = feedback.model_dump()
         feedback_dict["timestamp"] = datetime.now().isoformat()
         
-        with open(log_file, "a", encoding="utf-8") as f:
-            f.write(json.dumps(feedback_dict, ensure_ascii=False) + "\n")
+        # Escritura en MongoDB si está disponible
+        if app.state.mongo_disponible:
+            from app.db.mongo import col_sesiones
+            await col_sesiones().insert_one({**feedback_dict})
+            
+        # Escritura local siempre (backup y compatibilidad)
+        data_dir = Path("app/data")
+        data_dir.mkdir(parents=True, exist_ok=True)
+        with open(data_dir / "dataset_interacciones.jsonl", "a", encoding="utf-8") as f:
+            # Eliminar _id si mongo lo añadió al diccionario original mutándolo
+            feedback_limpio = {k: v for k, v in feedback_dict.items() if k != "_id"}
+            f.write(json.dumps(feedback_limpio, ensure_ascii=False) + "\n")
             
         return {"status": "success", "message": "Feedback recibido correctamente"}
     except Exception as e:

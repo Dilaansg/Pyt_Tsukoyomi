@@ -1,5 +1,12 @@
+import os
 import hashlib
 import torch
+from transformers import pipeline
+from functools import lru_cache
+
+# Apuntar la caché de HuggingFace a un directorio predecible (para Render)
+os.environ.setdefault("TRANSFORMERS_CACHE", "/tmp/hf_cache")
+os.environ.setdefault("HF_HOME", "/tmp/hf_cache")
 from transformers import pipeline
 from functools import lru_cache
 

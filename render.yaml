@@ -1,0 +1,15 @@
+services:
+  - type: web
+    name: tsukoyomi-ia
+    env: python
+    region: oregon
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: MONGODB_URI
+        sync: false
+      - key: PYTHON_VERSION
+        value: 3.11.0
