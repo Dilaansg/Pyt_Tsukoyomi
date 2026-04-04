@@ -13,6 +13,10 @@ let tacticasCapturadas = []; // Guardaremos los IDs de las tácticas usadas
 
 const API_URL = "/simular-friccion";
 const FEEDBACK_URL = "/feedback";
+const VISION_URL = "/detectar-contexto-visual";
+
+// Estado de visión: base64 de la imagen seleccionada o null
+let imagenBase64Pendiente = null;
 
 // Mapping de elementos del DOM
 const dom = {
@@ -32,7 +36,13 @@ const dom = {
   inputComentario:  document.getElementById('input-comentario'),
   btnEnviarFeedback: document.getElementById('btn-enviar-feedback'),
   stars:            document.querySelectorAll('.star'),
-  inputAge:         document.getElementById('user-age')
+  inputAge:         document.getElementById('user-age'),
+  // [VISION] Nuevos elementos del Ojo de Tsukuyomi
+  btnAdjuntar:      document.getElementById('btn-adjuntar'),
+  inputImagen:      document.getElementById('input-imagen'),
+  visionPreview:    document.getElementById('vision-preview'),
+  visionThumb:      document.getElementById('vision-thumb'),
+  btnQuitarImagen:  document.getElementById('btn-quitar-imagen'),
 };
 
 // PERSISTENCIA DE EDAD (LocalStorage)
@@ -91,12 +101,31 @@ function agregarBurbuja(texto, tipo) {
 
 // HANDLERS DE INTERFAZ
 
-dom.btnNextToModes.addEventListener('click', () => {
-    escenarioActual = dom.inputEscenario.value.trim();
+dom.btnNextToModes.addEventListener('click', async () => {
+    // [VISION] Si hay imagen, la procesamos antes de pasar.
+    if (imagenBase64Pendiente) {
+        dom.btnNextToModes.disabled = true;
+        const textoPreLoader = dom.btnNextToModes.innerHTML;
+        dom.btnNextToModes.innerHTML = "⏳";
+        
+        await procesarImagenComoEscenario();
+        
+        dom.btnNextToModes.innerHTML = textoPreLoader;
+        dom.btnNextToModes.disabled = false;
+        
+        // Si procesarImagen falla completamente y no extrae escenario, retorna.
+        if (!escenarioActual) {
+            return;
+        }
+    } else {
+        escenarioActual = dom.inputEscenario.value.trim();
+    }
+
     if (!escenarioActual) {
         dom.inputEscenario.style.borderColor = "#D32F2F";
         return;
     }
+    
     dom.previewEscenario.textContent = escenarioActual.substring(0, 150) + (escenarioActual.length > 150 ? "..." : "");
     showScreen('pantalla-modos');
 });
@@ -305,4 +334,112 @@ async function callBackend(data) {
 
 function closeFeedback() {
     document.getElementById('pantalla-feedback').classList.remove('active');
+}
+
+// ============================================================
+// [VISION] OJO DE TSUKUYOMI — Compresión y Análisis Visual
+// ============================================================
+
+/**
+ * Comprime una imagen a JPEG 1280px max con calidad 0.72 usando Canvas.
+ * Retorna una string Base64 pura (sin cabecera data:image/...)
+ */
+async function compressImageToBase64(file) {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onerror = reject;
+        reader.onload = (evt) => {
+            const img = new Image();
+            img.onerror = reject;
+            img.onload = () => {
+                const MAX_WIDTH = 1280;
+                const scale = img.width > MAX_WIDTH ? MAX_WIDTH / img.width : 1;
+                const canvas = document.createElement('canvas');
+                canvas.width  = Math.round(img.width  * scale);
+                canvas.height = Math.round(img.height * scale);
+                const ctx = canvas.getContext('2d');
+                ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+                // Solo la parte Base64 pura, sin "data:image/jpeg;base64,"
+                const dataURL = canvas.toDataURL('image/jpeg', 0.72);
+                resolve(dataURL.split(',')[1]);
+            };
+            img.src = evt.target.result;
+        };
+        reader.readAsDataURL(file);
+    });
+}
+
+function mostrarPreviewImagen(src) {
+    dom.visionThumb.src = src;
+    dom.visionPreview.style.display = 'flex';
+}
+
+function limpiarImagen() {
+    imagenBase64Pendiente = null;
+    dom.visionThumb.src = '';
+    dom.visionPreview.style.display = 'none';
+    dom.inputImagen.value = '';
+}
+
+// Botón clip → abre selector de archivos
+dom.btnAdjuntar.addEventListener('click', () => { dom.inputImagen.click(); });
+
+// Archivo seleccionado → thumbnail + compresión
+dom.inputImagen.addEventListener('change', async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    if (!file.type.startsWith('image/')) { alert('Por favor selecciona una imagen.'); return; }
+    mostrarPreviewImagen(URL.createObjectURL(file));
+    imagenBase64Pendiente = await compressImageToBase64(file);
+});
+
+// Quitar imagen
+dom.btnQuitarImagen.addEventListener('click', limpiarImagen);
+
+/**
+ * Envía la imagen al endpoint de visión al adjuntar en pantalla inicial.
+ * Extrae texto y contexto, asimilándolo como escenarioActual.
+ */
+async function procesarImagenComoEscenario() {
+    try {
+        const res = await fetch(VISION_URL, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ imagen_base64: imagenBase64Pendiente })
+        });
+
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const data = await res.json();
+
+        // CASO A: Fallback por Rate Limit
+        if (data.error || data.fallback_sugerido) {
+            alert('El servidor visual está saturado. Por favor, escribe lo que dice la captura en texto.');
+            limpiarImagen();
+            return;
+        }
+
+        // CASO B: Éxito — Inyectar contexto al escenario
+        const resumen = data.resumen_escenario || 'Una dinámica analizada por visión.';
+        
+        // Armamos el escenario inyectando JSON estructurado para que lo atrape RAG_Translator luego
+        const extraTexto = dom.inputEscenario.value.trim();
+        const baseContext = extraTexto ? `[Nota del usuario: ${extraTexto}]\n\n` : '';
+        
+        escenarioActual = `${baseContext}He analizado la captura: ${resumen}`;
+
+        // Aquí inyectamos además la transcripción, pero oculta o sumada al escenario
+        const transcripcion = Array.isArray(data.transcripcion_cronologica)
+            ? data.transcripcion_cronologica.map(m => `${m.emisor || 'Desconocido'}: ${m.mensaje || m}`).join('\n')
+            : JSON.stringify(data.transcripcion_cronologica);
+            
+        // Engrosar el escenario a espaldas del usuario:
+        escenarioActual += `\n\n=== HISTORIAL CHAT ===\n${transcripcion}`;
+        
+        // Log para QA
+        dom.outputJson.textContent = JSON.stringify(data, null, 2);
+
+    } catch (err) {
+        alert('No pude analizar la imagen. Verifica la conexión o usa texto.');
+        console.error('[VISION ERROR]', err);
+    }
 }

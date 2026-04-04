@@ -118,7 +118,8 @@ async def simular_friccion(peticion: PeticionSimulacion):
             prediccion = PrediccionFriccion(0.0, 0.0, 0.0, 0.0)
             tacticas_nombres = []
             tacticas_ids = []
-            prompt_final = rag.ensamblar_consejo(peticion.escenario, fase_a)
+            has_hist = len(peticion.historial) > 0
+            prompt_final = rag.ensamblar_consejo(peticion.escenario, fase_a, tiene_historial=has_hist)
             latencias["modo_efectivo"] = "consejo_directo"
         else:
             # FASE B: Predicción de Fricción vía MLP (Biometría)
@@ -144,8 +145,8 @@ async def simular_friccion(peticion: PeticionSimulacion):
         # FIX: Escenario en el historial
         historial_formateado = []
         if peticion.escenario and peticion.modo != "consejo":
-            historial_formateado.append(type("Obj", (object,), {"rol": "user", "contenido": f"CONTEXTO DEL ESCENARIO: {peticion.escenario}"}))
-            historial_formateado.append(type("Obj", (object,), {"rol": "model", "contenido": "Entendido."}))
+            historial_formateado.append(type("Obj", (object,), {"role": "user", "content": f"CONTEXTO DEL ESCENARIO: {peticion.escenario}"}))
+            historial_formateado.append(type("Obj", (object,), {"role": "model", "content": "Entendido."}))
             
         historial_formateado.extend(peticion.historial)
 

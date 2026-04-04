@@ -31,9 +31,12 @@ class LLMRouter:
                         
                         historial_formateado = []
                         for h in historial:
-                            role = "user" if getattr(h, "rol", "user").lower() == "user" else "model"
-                            contenido = getattr(h, "contenido", "")
-                            historial_formateado.append(types.Content(role=role, parts=[types.Part.from_text(text=contenido)]))
+                            # Soporte para objetos con role/content (Pydantic) o dicts
+                            role_val = getattr(h, "role", "user") if hasattr(h, "role") else h.get("role", "user")
+                            cont_val = getattr(h, "content", "") if hasattr(h, "content") else h.get("content", "")
+                            
+                            role = "user" if role_val.lower() == "user" else "model"
+                            historial_formateado.append(types.Content(role=role, parts=[types.Part.from_text(text=cont_val)]))
     
                         chat_session = async_client.chats.create(
                             model=modelo_id, 
