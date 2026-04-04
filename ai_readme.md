@@ -1,51 +1,49 @@
-🧠 TSUKOYOMI-IA: Technical System Architecture
-Este proyecto es un Simulador de Fricción Social basado en una arquitectura híbrida: Biometría de Teclado + NLP Zero-Shot + MLP (PyTorch) + RAG Semántico + LLM (Gemini 2.5).
+🧠 TSUKOYOMI-IA: Technical System Architecture (v3.1)
+===================================================
+
+Este proyecto es un **Simulador de Fricción Social** basado en una arquitectura híbrida: Biometría de Teclado + NLP Zero-Shot + MLP (PyTorch) + ADN Vectorial + LLM (Gemini 3.1).
 
 📁 Estructura de Archivos
-api.py (o main.py): Orquestador FastAPI. Gestiona el ciclo de vida de los modelos (lifespan) y los endpoints REST.
+-----------------------
+- **app/main.py**: Orquestador FastAPI asíncrono. Gestiona el ciclo de vida de los modelos (lifespan), la conexión a MongoDB Atlas y los endpoints `/simular-friccion`, `/feedback` y `/health`.
+- **app/core/rag_translator.py**: TraductorSemanticoV5. Selección de tácticas mediante Álgebra Lineal pura (Cosine Similarity) y Ensamblador de Prompts diferenciado (Simulador vs Consejo).
+- **app/core/nlp_service.py**: Extracción de contexto social con mDeBERTa-v3 optimizado con caché MD5 y truncamiento de tokens.
+- **app/db/mongo.py**: Módulo de persistencia asíncrona (Motor) para MongoDB Atlas.
+- **static/js/biometria.js**: Frontend en Vanilla JS. Captura biometría (latencia, borrados, ratio de duda) y gestiona el estado de la comunicación.
 
-motor_ia.py: Núcleo lógico. Contiene las clases de PyTorch, el banco de tácticas vectorizado y el ensamblador de prompts.
+🔄 Flujo de Datos (Pipeline Modular)
+----------------------------------
 
-index.html: Frontend vanilla JS. Captura biometría (latencia, borrados, ratio de duda) y gestiona el estado de la simulación.
+### 1. Fase A: Ingesta y Contexto Social (NLP)
+- **Input**: `texto_usuario` + `escenario`.
+- **Modelo**: `mDeBERTa-v3-base-mnli-xnli`.
+- **Proceso**: Clasificación Zero-shot (Ansiedad, Poder, Urgencia, Valencia).
+- **Optimización**: Cacheado por hash del escenario (una sola inferencia por sesión).
 
-.env: Almacena la GEMINI_API_KEY.
+### 2. Fase B: Motor de Fricción (PyTorch MLP)
+- **Input**: Metadatos biométricos (JS por Pydantic) + Vector Fase A.
+- **Modelo**: RedMediacionMLP con bloques residuales.
+- **Output**: Predicción de 4 dimensiones: terquedad, frialdad, sarcasmo, frustración.
+- **Seed Training**: Pesos iniciales pre-entrenados con `seed_trainer.py`.
 
-🔄 Flujo de Datos (Pipeline)
-1. Fase A: Ingesta y Contexto Social (NLP)
-Input: texto_usuario.
+### 3. Fase C: Selección de ADN Vectorial
+- **Proceso**: El vector del MLP se compara contra el banco de 100 tácticas de fricción (`tacticas.json`).
+- **Lógica**: En modo Simulador se recupera la táctica `top_k=1` para asegurar respuestas naturales no estructuradas.
 
-Modelo: mDeBERTa-v3-base-mnli-xnli (Zero-shot classification).
+### 4. Fase D: Generación con LLM (Multimodal Fallback)
+- **Modelos**: Gemini 3.1 Flash / Pro / Lite (Rotación automática ante errores de cuota).
+- **Prompt**:
+  - **Simulador**: Adopta un rol inferido dinámicamente y aplica la táctica de forma "invisible".
+  - **Consejo**: Salta las fases B y C para actuar como un confidente empático que deconstruye la situación.
 
-Output: Vector soc_A (Ansiedad), soc_P (Poder), soc_U (Urgencia), soc_V (Valencia).
+⚙️ Persistencia y Cloud
+----------------------
+- **Base de Datos**: MongoDB Atlas (Cloud) + Backup local en `.jsonl`.
+- **Infraestructura**: Preparado para despliegue en Render (ficheros `render.yaml` y `Procfile` incluidos).
+- **Capa de Datos**: Repositorio Stateless. El historial reside en el cliente.
 
-Lógica: Determina la jerarquía y el tono de la relación.
-
-2. Fase B: Motor de Fricción (PyTorch MLP)
-Input: Metadatos biométricos del JS + Vector Fase A.
-
-Modelo: RedMediacionMLP (Multi-Layer Perceptron con bloques residuales y LayerNorm).
-
-Output: Predicción de 4 dimensiones: terquedad, frialdad, sarcasmo, frustracion.
-
-3. Fase C: Traducción Semántica (RAG)
-Proceso: El ScoringAnalitico convierte las predicciones numéricas en una query de lenguaje natural.
-
-Búsqueda: Se realiza una búsqueda de similitud coseno contra BANCO_TACTICAS usando all-MiniLM-L6-v2.
-
-Output: Las 4 tácticas psicológicas más relevantes según el estado emocional detectado.
-
-4. Fase D: Generación de Respuesta (LLM)
-Modelo: Gemini 2.5 Flash.
-
-Prompt Inyectado: Combina el Escenario Inicial, el historial de chat y las tácticas recuperadas por el RAG.
-
-Rol: Inferencia dinámica de personalidad basada en el contexto provisto por el usuario.
-
-🛠 Especificaciones Técnicas para Agentes (Aider/OpenCode)
-Manejo de Estado: El servidor es stateless. El historial se mantiene en el cliente y se envía en cada request.
-
-Normalización: Se utiliza LayerNorm en lugar de BatchNorm para soportar inferencia de batch_size=1 sin colapsar.
-
-Biometría: El campo pulsaciones_totales incluye eventos keydown repetidos para capturar la intensidad física (ej: "aaaaa").
-
-Seguridad: No hardcodear API Keys; usar load_dotenv().
+🛠 Especificaciones para Desarrolladores
+--------------------------------------
+- **Carga de Modelos**: Se realiza en el `lifespan` de FastAPI al arranque.
+- **Requisitos**: `pip install -r requirements.txt` (incluye `motor`, `torch`, `transformers`, etc).
+- **Entorno**: Requiere archivo `.env` con `GEMINI_API_KEY` y `MONGODB_URI`.
