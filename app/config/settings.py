@@ -17,11 +17,12 @@ class Settings(BaseSettings):
         "models/gemma-3-27b-it"
     ]
     
-    # CONFIGURACIÓN GROQ (TRABAJO 2)
+    # CONFIGURACIÓN GROQ (FALLBACK)
     groq_api_key: str = ""
     groq_model_list: list[str] = [
-        "llama-3.1-8b-instant",       # 14.4k RPD, 500k TPD, 30 RPM
-        "llama-3.3-70b-versatile"     # Fallback, 1K RPD, 100k TPD, 30 RPM
+        "llama-3.3-70b-versatile",   # El más capaz, 70B
+        "llama3-8b-8192",            # Más rápido, 8B
+        "gemma2-9b-it",              # Fallback Google
     ]
     
     max_historial_chat: int = 20

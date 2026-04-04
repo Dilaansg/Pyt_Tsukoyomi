@@ -2,11 +2,11 @@ fastapi
 uvicorn
 pydantic
 transformers
-google-generativeai
+google-genai>=0.8.0
 pydantic-settings
 python-dotenv
 torch
 sentence-transformers
 motor==3.3.2
 pymongo==4.6.1
-groq==0.9.0
+groq

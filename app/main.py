@@ -11,7 +11,7 @@ from fastapi.staticfiles import StaticFiles
 
 
 from app.config.settings import config
-from app.api.schemas import PeticionSimulacion, RespuestaSimulacion, FeedbackSession
+from app.api.schemas import PeticionSimulacion, RespuestaSimulacion, FeedbackSession, VisionUploadRequest
 from app.core.nlp_service import NLPService
 from app.core.friction_model import RedMediacionMLP, predecir
 from app.core.rag_translator import TraductorSemanticoV4
@@ -142,13 +142,15 @@ async def simular_friccion(peticion: PeticionSimulacion):
         # FASE D: Generación de Respuesta con LLM ROUTER
         t_llm_start = time.time()
         
-        # FIX: Escenario en el historial
+        # FIX: Historial con dicts planos (compatible con llm_router normalizado)
         historial_formateado = []
         if peticion.escenario and peticion.modo != "consejo":
-            historial_formateado.append(type("Obj", (object,), {"role": "user", "content": f"CONTEXTO DEL ESCENARIO: {peticion.escenario}"}))
-            historial_formateado.append(type("Obj", (object,), {"role": "model", "content": "Entendido."}))
-            
-        historial_formateado.extend(peticion.historial)
+            historial_formateado.append({"role": "user", "content": f"CONTEXTO DEL ESCENARIO (No respondas, solo tenlo en cuenta): {peticion.escenario}"})
+            historial_formateado.append({"role": "model", "content": "Entendido. Mantendré este contexto."})
+
+        # Convertir objetos Pydantic a dicts
+        for msg in peticion.historial:
+            historial_formateado.append({"role": msg.role, "content": msg.content})
 
         try:
             respuesta_texto, modelo_usado = await app.state.llm_router.llamar_llm(
@@ -225,7 +227,7 @@ async def store_feedback(feedback: FeedbackSession):
         raise HTTPException(status_code=500, detail=f"Error guardando feedback: {str(e)}")
 
 @app.post("/detectar-contexto-visual")
-async def detectar_contexto_visual(req: __import__('app.api.schemas', fromlist=['VisionUploadRequest']).VisionUploadRequest):
+async def detectar_contexto_visual(req: VisionUploadRequest):
     """ Toma un base64, lo pasa a Gemini Vision y retorna el JSON extraído. """
     try:
         t0 = time.time()
