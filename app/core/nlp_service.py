@@ -1,83 +1,69 @@
-import os
+import json
+import re
 import hashlib
-import torch
-from transformers import pipeline
-from functools import lru_cache
-
-# Apuntar la caché de HuggingFace a un directorio predecible (para Render)
-os.environ.setdefault("TRANSFORMERS_CACHE", "/tmp/hf_cache")
-os.environ.setdefault("HF_HOME", "/tmp/hf_cache")
-from transformers import pipeline
-from functools import lru_cache
-
 
 class NLPService:
     """
-    Servicio de extracción de contexto social vía Zero-Shot Classification.
-    Incluye caché LRU por hash del escenario para evitar re-inferencia en
-    cada turno de conversación (la situación social no cambia turno a turno).
+    Servicio de extracción de contexto social usando el LLMRouter (LLM Inference).
+    Reemplaza al antiguo mDeBERTa para mejorar rendimiento de RAM y velocidad.
+    Incluye caché simple en memoria.
     """
 
-    ETIQUETAS = [
-        "miedo al rechazo o ansiedad social",
-        "la persona tiene autoridad o es el jefe",
-        "la persona es un subordinado o novato",
-        "situación urgente o crisis de tiempo",
-        "son amigos cercanos o hay mucha confianza",
-    ]
-
-    def __init__(self, model_name: str = "MoritzLaurer/mDeBERTa-v3-base-mnli-xnli"):
-        self.clasificador = pipeline(
-            "zero-shot-classification",
-            model=model_name,
-            device=-1,              # CPU explícito — evita búsqueda de CUDA innecesaria
-            torch_dtype=torch.float32,
-        )
-        # Pre-compila las etiquetas para evitar tokenización repetida
-        self._etiquetas_tuple = tuple(self.ETIQUETAS)
+    def __init__(self):
+        self._cache = {}
 
     def _hash_texto(self, texto: str) -> str:
         return hashlib.md5(texto.strip().lower().encode()).hexdigest()
 
-    def _analizar_interno(self, texto: str) -> dict:
-        """Inferencia real contra el modelo."""
-        resultado = self.clasificador(
-            texto[:512],               # Limitar longitud → inferencia más rápida
-            list(self._etiquetas_tuple),
-            multi_label=True,
-        )
-        return dict(zip(resultado["labels"], resultado["scores"]))
+    async def extraer_metricas_sociales(self, router, texto: str) -> tuple:
+        """
+        Calcula las variables sociales (A, P, U, V) extrayendo JSON desde el LLM.
+        Retorna: (soc_A, soc_P, soc_U, soc_V).
+        """
+        if not texto.strip():
+            return 0.1, 0.0, 0.1, 0.5
 
-    def analizar_contexto(self, texto: str) -> dict:
-        """
-        Clasifica el texto. Usa caché interna basada en hash MD5 del texto
-        para evitar inferencias repetidas del mismo escenario.
-        """
         clave = self._hash_texto(texto)
-        return self._analizar_cacheado(clave, texto)
+        if clave in self._cache:
+            c = self._cache[clave]
+            return c["soc_A"], c["soc_P"], c["soc_U"], c["soc_V"]
 
-    def _analizar_cacheado(self, clave: str, texto: str) -> dict:
-        """Wrapper con caché manual (lru_cache no funciona con métodos de instancia directamente)."""
-        if not hasattr(self, "_cache"):
-            self._cache = {}
-        if clave not in self._cache:
-            self._cache[clave] = self._analizar_interno(texto)
-            # Evitar caché infinito: limitar a 128 entradas
-            if len(self._cache) > 128:
+        prompt = f"""Analiza este texto y extrae 4 métricas de -1.0 a 1.0 basadas en la intención sutil, pragmatismo y hostilidad/empatía:
+1. "soc_A" (Empatía/Hostilidad): -1.0 es extremo egoísmo/hostilidad, 1.0 es máxima empatía/apoyo.
+2. "soc_P" (Autoridad/Sumisión): -1.0 es extrema sumisión/defensa, 1.0 es autoridad/jefe imbatible.
+3. "soc_U" (Urgencia/Calma): -1.0 es extrema pausa/calma, 1.0 es extrema presión de tiempo/urgencia.
+4. "soc_V" (Vulnerabilidad): -1.0 es lejanía/formalidad profesional, 1.0 es hermandad/máxima confianza y calidez.
+
+Responde ÚNICAMENTE en JSON válido con esas 4 llaves numéricas.
+Texto a clasificar: '{texto}'"""
+
+        try:
+            # Mandamos la carga al router. Responde con texto crudo pero se espera JSON.
+            # Configuramos un sys_prompt simple asegurando el modo JSON.
+            respuesta, _ = await router.llamar_llm(
+                sys_prompt="Eres una máquina de extracción de métricas. Muestra exclusivamente un JSON sin markdown extra.",
+                user_text=prompt,
+                historial=[]
+            )
+            
+            # Limpiar posible basura antes y despues del JSON
+            match = re.search(r'\{.*\}', respuesta, re.DOTALL)
+            if match:
+                datos = json.loads(match.group(0))
+                soc_a = float(datos.get("soc_A", 0.0))
+                soc_p = float(datos.get("soc_P", 0.0))
+                soc_u = float(datos.get("soc_U", 0.0))
+                soc_v = float(datos.get("soc_V", 0.0))
+            else:
+                raise ValueError(f"No JSON found en la respuesta: {respuesta}")
+
+            # Guardar en caché
+            self._cache[clave] = {"soc_A": soc_a, "soc_P": soc_p, "soc_U": soc_u, "soc_V": soc_v}
+            if len(self._cache) > 256:
                 self._cache.pop(next(iter(self._cache)))
-        return self._cache[clave]
+                
+            return soc_a, soc_p, soc_u, soc_v
 
-    def extraer_metricas_sociales(self, texto: str) -> tuple:
-        """
-        Calcula las variables sociales (A, P, U, V).
-        Retorna: (Ansiedad, Poder, Urgencia, Valencia).
-        Fuertemente cacheado: el mismo texto siempre produce el mismo vector.
-        """
-        scores = self.analizar_contexto(texto)
-
-        soc_a = scores["miedo al rechazo o ansiedad social"]
-        soc_p = scores["la persona tiene autoridad o es el jefe"] - scores["la persona es un subordinado o novato"]
-        soc_u = scores["situación urgente o crisis de tiempo"]
-        soc_v = scores["son amigos cercanos o hay mucha confianza"]
-
-        return soc_a, soc_p, soc_u, soc_v
+        except Exception as e:
+            print(f"[NLPService] Error extrayendo métricas con LLM: {e}. Fallback a valores neutros.")
+            return 0.1, 0.0, 0.1, 0.5

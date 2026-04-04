@@ -50,3 +50,7 @@ class FeedbackSession(BaseModel):
     # Feedback granular para la Fase 3 (ML Dinámico)
     tacticas_feedback: List[FeedbackTactica] = []
     timestamp:      Optional[str] = None
+
+class VisionUploadRequest(BaseModel):
+    """ Esquema de envío de captura de chat al endpoint de Visión. """
+    imagen_base64: str = Field(description="Captura de chat comprimida en base64 pura sin cabecera MIME.")

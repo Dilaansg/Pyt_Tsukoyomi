@@ -16,6 +16,14 @@ class Settings(BaseSettings):
         "models/gemini-flash-latest",
         "models/gemma-3-27b-it"
     ]
+    
+    # CONFIGURACIÓN GROQ (TRABAJO 2)
+    groq_api_key: str = ""
+    groq_model_list: list[str] = [
+        "llama-3.1-8b-instant",       # 14.4k RPD, 500k TPD, 30 RPM
+        "llama-3.3-70b-versatile"     # Fallback, 1K RPD, 100k TPD, 30 RPM
+    ]
+    
     max_historial_chat: int = 20
 
     model_config = SettingsConfigDict(

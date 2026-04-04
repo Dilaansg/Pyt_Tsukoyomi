@@ -533,3 +533,13 @@ body:has(#pantalla-chat.active) .main-footer {
 .status-low {
   color: var(--text-secondary);
 }
+
+.msj-bot.modo-consejo {
+    border-left: 3px solid #1D9E75;
+    border-radius: 2px 18px 18px 18px;
+}
+
+.msj-bot.modo-simulador {
+    border-left: 3px solid #888780;
+    border-radius: 2px 18px 18px 18px;
+}

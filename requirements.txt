@@ -9,3 +9,4 @@ torch
 sentence-transformers
 motor==3.3.2
 pymongo==4.6.1
+groq==0.9.0

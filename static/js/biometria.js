@@ -67,11 +67,26 @@ function resetSensores() {
 }
 
 function agregarBurbuja(texto, tipo) {
-  const div = document.createElement('div');
-  div.className = `mensaje msj-${tipo}`;
-  div.textContent = texto;
-  dom.chatBox.appendChild(div);
-  dom.chatContainer.scrollTop = dom.chatContainer.scrollHeight;
+    const div = document.createElement('div');
+    div.className = `mensaje msj-${tipo}`;
+    if (tipo === 'bot') div.classList.add(`modo-${modoActual}`);
+
+    if (tipo === 'bot') {
+        // Parseo mínimo: convertir markdown básico a HTML seguro
+        const html = texto
+            .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+            .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+            .replace(/\*(.+?)\*/g, '<em>$1</em>')
+            .replace(/^[-•]\s+/gm, '')
+            .replace(/\n\n+/g, '</p><p>')
+            .replace(/\n/g, '<br>');
+        div.innerHTML = `<p style="margin:0">${html}</p>`;
+    } else {
+        div.textContent = texto;
+    }
+
+    dom.chatBox.appendChild(div);
+    dom.chatContainer.scrollTop = dom.chatContainer.scrollHeight;
 }
 
 // HANDLERS DE INTERFAZ
@@ -90,7 +105,7 @@ async function inicializarConversacion() {
     historialChat = [];
     tacticasCapturadas = [];
     dom.chatBox.innerHTML = '';
-    
+
     const loader = document.createElement('div');
     loader.className = 'escribiendo';
     loader.textContent = 'IA está analizando el escenario...';
@@ -112,8 +127,14 @@ async function inicializarConversacion() {
         historial: []
     };
 
+    const timeoutId = setTimeout(() => {
+        loader.textContent = 'El servidor tardó demasiado. Recarga la página e intenta de nuevo.';
+        loader.style.color = '#D32F2F';
+    }, 25000);
+
     try {
         const res = await callBackend(payload);
+        clearTimeout(timeoutId);
         loader.remove();
         if (res.respuesta_bot) {
             agregarBurbuja(res.respuesta_bot, 'bot');
@@ -124,7 +145,9 @@ async function inicializarConversacion() {
             dom.outputJson.textContent = JSON.stringify(res, null, 2);
         }
     } catch (e) {
-        loader.textContent = "Error al conectar con el servidor.";
+        clearTimeout(timeoutId);
+        loader.textContent = 'Error al conectar con el servidor. Recarga la página.';
+        loader.style.color = '#D32F2F';
     }
 }
 
@@ -180,6 +203,12 @@ dom.btnEnviar.addEventListener('click', async () => {
 });
 
 dom.btnRestart.addEventListener('click', () => {
+    // Reset completo del estado del modal
+    dom.inputRating.value = '0';
+    dom.stars.forEach(s => s.classList.remove('selected'));
+    dom.inputComentario.value = '';
+    dom.btnEnviarFeedback.disabled = false;
+    dom.btnEnviarFeedback.textContent = 'Enviar y Finalizar';
     document.getElementById('pantalla-feedback').classList.add('active');
 });
 
@@ -242,6 +271,11 @@ dom.inputChat.addEventListener('keydown', (e) => {
     if (!tiempoInicioEscritura) tiempoInicioEscritura = Date.now();
     pulsacionesTotales++;
     if (e.key === 'Backspace' || e.key === 'Delete') contadorBorrados++;
+    // AÑADIR: Enter sin Shift envía
+    if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault();
+        if (!dom.btnEnviar.disabled) dom.btnEnviar.click();
+    }
 });
 
 dom.inputChat.addEventListener('paste', () => {
@@ -267,4 +301,8 @@ async function callBackend(data) {
     body: JSON.stringify(data)
   });
   return response.json();
+}
+
+function closeFeedback() {
+    document.getElementById('pantalla-feedback').classList.remove('active');
 }

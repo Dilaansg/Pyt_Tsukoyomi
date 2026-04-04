@@ -8,7 +8,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
-import google.generativeai as genai
+
 
 from app.config.settings import config
 from app.api.schemas import PeticionSimulacion, RespuestaSimulacion, FeedbackSession
@@ -16,6 +16,8 @@ from app.core.nlp_service import NLPService
 from app.core.friction_model import RedMediacionMLP, predecir
 from app.core.rag_translator import TraductorSemanticoV4
 from app.core.schemas import PayloadFaseA, PayloadFaseB, PrediccionFriccion
+from app.core.llm_router import LLMRouter
+from app.core.vision_service import VisionService
 
 from app.db.mongo import ping, col_sesiones, col_latencias
 
@@ -26,7 +28,8 @@ async def lifespan(app: FastAPI):
     Carga modelos en memoria para optimizar la latencia en inferencia.
     """
     print("\n[TSUKOYOMI-IA] Inicializando servicios...")
-    genai.configure(api_key=config.gemini_api_key)
+    app.state.llm_router = LLMRouter()
+    app.state.vision_service = VisionService()
 
     # MongoDB
     if config.mongodb_uri:
@@ -105,7 +108,7 @@ async def simular_friccion(peticion: PeticionSimulacion):
         if not texto_a_analizar.strip():
             soc_a, soc_p, soc_u, soc_v = 0.1, 0.0, 0.1, 0.5
         else:
-            soc_a, soc_p, soc_u, soc_v = nlp.extraer_metricas_sociales(texto_a_analizar)
+            soc_a, soc_p, soc_u, soc_v = await nlp.extraer_metricas_sociales(app.state.llm_router, texto_a_analizar)
         
         fase_a = PayloadFaseA(soc_A=soc_a, soc_P=soc_p, soc_U=soc_u, soc_V=soc_v)
         latencias["FASE_A_NLP"] = round(time.time() - t_nlp_start, 3)
@@ -135,48 +138,26 @@ async def simular_friccion(peticion: PeticionSimulacion):
             latencias["FASE_C_VECTORIAL"] = round(time.time() - t_rag_start, 3)
             latencias["modo_efectivo"] = "simulador_completo"
 
-        # FASE D: Generación de Respuesta con LLM (Gemini) con ROTACIÓN AUTOMÁTICA
+        # FASE D: Generación de Respuesta con LLM ROUTER
         t_llm_start = time.time()
         
-        # FIX: Inyectamos el escenario como un recordatorio persistente al inicio del historial de parts
-        # para que el modelo nunca pierda el hilo de qué situación está simulando.
-        historial_gemini = []
-        if peticion.escenario:
-            historial_gemini.append({"role": "user", "parts": [f"CONTEXTO DEL ESCENARIO (No respondas a esto, solo tenlo en cuenta): {peticion.escenario}"]})
-            historial_gemini.append({"role": "model", "parts": ["Entendido. Mantendré este contexto durante toda la simulación."]})
-        
-        historial_gemini.extend([{"role": m.role, "parts": [m.content]} for m in peticion.historial])
-        
-        # Rotación automática de modelos ante errores de cuota (ResourceExhausted / 429)
-        respuesta_llm = None
-        modelo_usado = None
-        
-        for model_variant in config.gemini_model_list:
-            try:
-                print(f"[LLM-FALLBACK] Probando con modelo: {model_variant}")
-                modelo_gemini = genai.GenerativeModel(
-                    model_name=model_variant,
-                    system_instruction=prompt_final,
-                )
-                chat = modelo_gemini.start_chat(history=historial_gemini)
-                respuesta_llm = chat.send_message(peticion.texto_usuario)
-                modelo_usado = model_variant
-                break # Éxito: Salimos del bucle
-            except Exception as e:
-                error_str = str(e).lower()
-                # Si es un error de cuota o créditos, probamos el siguiente.
-                # Si es un error crítico (API key inválida), paramos inmediatamente.
-                if "429" in error_str or "quota" in error_str or "exhausted" in error_str or "credit" in error_str:
-                    print(f"[LLM-FALLBACK] Error de cuota en {model_variant}. Saltando al siguiente...")
-                    continue 
-                else:
-                    # Otros errores, abortamos el bucle.
-                    print(f"[LLM-ERROR] Error catastrófico: {e}")
-                    raise e
+        # FIX: Escenario en el historial
+        historial_formateado = []
+        if peticion.escenario and peticion.modo != "consejo":
+            historial_formateado.append(type("Obj", (object,), {"rol": "user", "contenido": f"CONTEXTO DEL ESCENARIO: {peticion.escenario}"}))
+            historial_formateado.append(type("Obj", (object,), {"rol": "model", "contenido": "Entendido."}))
+            
+        historial_formateado.extend(peticion.historial)
 
-        if not respuesta_llm:
-            raise HTTPException(status_code=503, detail="Todos los modelos configurados han agotado su cuota diaria.")
-
+        try:
+            respuesta_texto, modelo_usado = await app.state.llm_router.llamar_llm(
+                sys_prompt=prompt_final,
+                user_text=peticion.texto_usuario,
+                historial=historial_formateado
+            )
+        except RuntimeError as e:
+            raise HTTPException(status_code=503, detail=str(e))
+            
         latencias["FASE_D_LLM"] = round(time.time() - t_llm_start, 3)
         # FIX: Evitamos sumar el nombre del modelo (str) a las latencias numéricas
         solo_numeros = [v for v in latencias.values() if isinstance(v, (int, float))]
@@ -198,7 +179,7 @@ async def simular_friccion(peticion: PeticionSimulacion):
             pass
 
         return RespuestaSimulacion(
-            respuesta_bot=respuesta_llm.text,
+            respuesta_bot=respuesta_texto,
             friccion_calculada=prediccion.to_dict(),
             contexto_nlp_extraido={
                 "soc_A": round(fase_a.soc_A, 3), "soc_P": round(fase_a.soc_P, 3),
@@ -241,3 +222,24 @@ async def store_feedback(feedback: FeedbackSession):
         return {"status": "success", "message": "Feedback recibido correctamente"}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error guardando feedback: {str(e)}")
+
+@app.post("/detectar-contexto-visual")
+async def detectar_contexto_visual(req: __import__('app.api.schemas', fromlist=['VisionUploadRequest']).VisionUploadRequest):
+    """ Toma un base64, lo pasa a Gemini Vision y retorna el JSON extraído. """
+    try:
+        t0 = time.time()
+        vision: VisionService = app.state.vision_service
+        router: LLMRouter = app.state.llm_router
+        
+        json_extraido = await vision.extraer_contexto_visual(router, req.imagen_base64)
+        
+        if "error" in json_extraido:
+            # Propagamos el Fallback de Rate Limit limpiamente sin errores HTTP
+            return json_extraido
+            
+        print(f"[VISION] Contexto extraído en {round(time.time() - t0, 2)}s.")
+        return json_extraido
+    except Exception as e:
+        print(f"[VISION ERROR] Fallo crítico extrayendo imagen: {e}")
+        # Enviar aviso seguro al front para fallback natural
+        return {"error": "fallo_critico", "fallback_sugerido": True, "detalle": str(e)}
