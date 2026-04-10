@@ -4,17 +4,17 @@ import torch.nn.functional as F
 from .schemas import PayloadFaseA, PayloadFaseB, PrediccionFriccion
 
 class NormalizadorEntrada(nn.Module):
-    """ Escala las dimensiones de entrada para estabilizar la inferencia del MLP. """
+    """ Escala las dimensiones de entrada usando estadísticas precomputadas. """
     def __init__(self):
         super().__init__()
-        self.ln_nlp = nn.LayerNorm(4)
-        self.ln_js  = nn.LayerNorm(6)
+        # Se registran como buffers frozen para guardarse en el state_dict
+        self.register_buffer("mean", torch.zeros(11))
+        self.register_buffer("std", torch.ones(11))
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
-        nlp        = self.ln_nlp(x[:, 0:4])
-        js_num     = self.ln_js(x[:, 4:10])
-        copy_paste = x[:, 10:11]
-        return torch.cat([nlp, js_num, copy_paste], dim=1)
+        # Normalizamos usando los estadísticos del seed dataset
+        # El output sigue siendo tensor de 4 dimensiones en [0,1] al final de la red
+        return (x - self.mean) / (self.std + 1e-6)
 
 class BloqueResidual(nn.Module):
     """ Implementa bloques residuales para mitigar el desvanecimiento del gradiente. """

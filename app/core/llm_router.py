@@ -130,9 +130,14 @@ class LLMRouter:
         """Intenta con cada modelo Groq hasta que uno funcione."""
         mensajes = [{"role": "system", "content": sys_prompt}]
         for h in historial:
-            # Groq usa "assistant" en lugar de "model"
-            role = "assistant" if h["role"] in ("model", "bot") else "user"
-            mensajes.append({"role": role, "content": h["content"]})
+            # Obtener atributos usando getattr con fallback a dict.get para soportar objetos Pydantic o dicts
+            raw_role = getattr(h, "role", h.get("role", "user") if isinstance(h, dict) else "user")
+            raw_content = getattr(h, "content", h.get("content", "") if isinstance(h, dict) else "")
+            
+            # Groq requiere que el rol sea 'assistant', no 'model' (que es de Gemini) ni 'bot'
+            mapped_role = "assistant" if raw_role in ("model", "bot", "assistant") else "user"
+            mensajes.append({"role": mapped_role, "content": raw_content})
+            
         mensajes.append({"role": "user", "content": user_text})
 
         for modelo_id in config.groq_model_list:

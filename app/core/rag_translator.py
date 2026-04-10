@@ -163,10 +163,10 @@ class BancoTacticasVectorial:
             [t["vector"] for t in self.tacticas], dtype=torch.float32
         )
 
-    def buscar(self, pred: PrediccionFriccion, top_k: int = 1) -> Tuple[List[str], List[str]]:
+    def buscar(self, pred: PrediccionFriccion, top_k: int = 1, modo: str = "simulador") -> Tuple[List[str], List[str]]:
         """
         Retorna las `top_k` tácticas más cercanas al vector de predicción.
-        Para el Simulador usamos top_k=1 (una sola directiva = respuesta variable natural).
+        Aplica reglas exhaustivas de filtrado y priorización sgún el 'modo'.
         """
         query = torch.tensor(
             [pred.terquedad, pred.frialdad, pred.sarcasmo, pred.frustracion],
@@ -175,7 +175,23 @@ class BancoTacticasVectorial:
         norm_query = F.normalize(query.unsqueeze(0), p=2, dim=1)
         norm_vectores = F.normalize(self.vectores, p=2, dim=1)
         scores = torch.mm(norm_query, norm_vectores.t()).squeeze()
-        top = scores.topk(min(top_k, len(self.tacticas)))
+
+        scores_modificados = scores.clone()
+        
+        # Generar IDs a excluir o priorizar dinámicamente sin alterar el JSON
+        excluir_simulador = [f"T{i}" for i in range(41, 51)] + [f"T{i}" for i in range(86, 101)]
+        priorizar_consejo = [f"T{i}" for i in range(86, 101)]
+        
+        for i, t in enumerate(self.tacticas):
+            t_id = t["id"]
+            if modo == "simulador":
+                if t_id in excluir_simulador:
+                    scores_modificados[i] = -float('inf')  # Excluir tacticas de resolucion y empatia pura
+            elif modo == "consejo":
+                if t_id in priorizar_consejo:
+                    scores_modificados[i] += 10.0  # Priorizar tacticas constructivas
+
+        top = scores_modificados.topk(min(top_k, len(self.tacticas)))
         indices = top.indices.tolist()
         if isinstance(indices, int):
             indices = [indices]
@@ -202,7 +218,7 @@ class TraductorSemanticoV5:
         escenario: str,
     ) -> Tuple[str, List[str], List[str]]:
         """Pipeline para modo simulador: recupera 1 táctica y ensambla el prompt."""
-        tacticas_textos, tacticas_ids = self.banco.buscar(pred, top_k=1)
+        tacticas_textos, tacticas_ids = self.banco.buscar(pred, top_k=1, modo=modo)
         prompt = self.ensamblador.ensamblar_simulador(
             tactica=tacticas_textos[0] if tacticas_textos else "",
             escenario=escenario,

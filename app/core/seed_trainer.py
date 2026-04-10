@@ -100,6 +100,10 @@ def entrenar_seed(
     X = torch.tensor([d[0] for d in SEED_DATA], dtype=torch.float32)
     Y = torch.tensor([d[1] for d in SEED_DATA], dtype=torch.float32)
 
+    # Calcular mean y std del seed dataset y guardarlos como buffers
+    modelo.normalizador.mean = X.mean(dim=0)
+    modelo.normalizador.std = X.std(dim=0).clamp(min=1e-6)
+
     optim = torch.optim.Adam(modelo.parameters(), lr=lr)
     loss_fn = nn.MSELoss()
 
