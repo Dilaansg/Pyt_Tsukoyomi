@@ -2,7 +2,7 @@ fastapi
 uvicorn
 pydantic
 transformers
-google-genai>=0.8.0
+google-genai==1.70.0
 pydantic-settings
 python-dotenv
 --extra-index-url https://download.pytorch.org/whl/cpu
