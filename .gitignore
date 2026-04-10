@@ -27,3 +27,13 @@ app/data/latency_logs.jsonl
 /tmp/
 app/models/*.pt
 app/data/*.jsonl
+
+# Node / React
+node_modules/
+frontend/node_modules/
+dist/  
+frontend/dist/
+.DS_Store
+
+# Archivos de configuración de Render
+.render.yaml

@@ -2,7 +2,7 @@ fastapi
 uvicorn
 pydantic
 transformers
-google-generativeai
+google-genai == 1.70.0
 pydantic-settings
 python-dotenv
 torch
