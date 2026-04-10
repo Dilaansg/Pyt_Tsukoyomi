@@ -26,6 +26,7 @@ app/data/latency_logs.jsonl
 # Rutas temporales de Render y HF
 /tmp/
 app/models/*.pt
+!app/models/mlp_seed.pt
 app/data/*.jsonl
 
 # Node / React

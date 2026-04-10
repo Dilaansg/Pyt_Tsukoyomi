@@ -18,6 +18,7 @@ class NLPService:
     async def extraer_metricas_sociales(self, router, texto: str) -> tuple:
         """
         Calcula las variables sociales (A, P, U, V) extrayendo JSON desde el LLM.
+        El LLM devuelve valores en rangos variables; normalizamos A/U/V a 0-1.
         Retorna: (soc_A, soc_P, soc_U, soc_V).
         """
         if not texto.strip():
@@ -28,32 +29,48 @@ class NLPService:
             c = self._cache[clave]
             return c["soc_A"], c["soc_P"], c["soc_U"], c["soc_V"]
 
-        prompt = f"""Analiza este texto y extrae 4 métricas de -1.0 a 1.0 basadas en la intención sutil, pragmatismo y hostilidad/empatía:
-1. "soc_A" (Empatía/Hostilidad): -1.0 es extremo egoísmo/hostilidad, 1.0 es máxima empatía/apoyo.
-2. "soc_P" (Autoridad/Sumisión): -1.0 es extrema sumisión/defensa, 1.0 es autoridad/jefe imbatible.
-3. "soc_U" (Urgencia/Calma): -1.0 es extrema pausa/calma, 1.0 es extrema presión de tiempo/urgencia.
-4. "soc_V" (Vulnerabilidad): -1.0 es lejanía/formalidad profesional, 1.0 es hermandad/máxima confianza y calidez.
+        prompt = f"""Analiza este texto y devuelve 4 métricas psicológicas en JSON.
 
-Responde ÚNICAMENTE en JSON válido con esas 4 llaves numéricas.
-Texto a clasificar: '{texto}'"""
+Texto: '{texto[:400]}'
+
+Métricas (valores float de 0.0 a 1.0 para A/U/V, de -1.0 a 1.0 para P):
+- "soc_A": Ansiedad/hostilidad del autor (0=calmo/hostil, 1=ansioso/vulnerable)
+- "soc_P": Poder relativo (-1=sumiso/subordinado, 0=igual, 1=autoridad/jefe)
+- "soc_U": Urgencia temporal (0=relajado, 1=crisis/urgente)
+- "soc_V": Confianza/cercanía (0=distante/formal, 1=amigo íntimo/máxima confianza)
+
+Responde SOLO con el JSON, sin markdown, sin texto adicional."""
 
         try:
-            # Mandamos la carga al router. Responde con texto crudo pero se espera JSON.
-            # Configuramos un sys_prompt simple asegurando el modo JSON.
             respuesta, _ = await router.llamar_llm(
                 sys_prompt="Eres una máquina de extracción de métricas. Muestra exclusivamente un JSON sin markdown extra.",
                 user_text=prompt,
                 historial=[]
             )
             
-            # Limpiar posible basura antes y despues del JSON
+            # Limpiar posible basura antes y después del JSON
             match = re.search(r'\{.*\}', respuesta, re.DOTALL)
             if match:
                 datos = json.loads(match.group(0))
-                soc_a = float(datos.get("soc_A", 0.0))
+                soc_a = float(datos.get("soc_A", 0.1))
                 soc_p = float(datos.get("soc_P", 0.0))
-                soc_u = float(datos.get("soc_U", 0.0))
-                soc_v = float(datos.get("soc_V", 0.0))
+                soc_u = float(datos.get("soc_U", 0.1))
+                soc_v = float(datos.get("soc_V", 0.5))
+
+                # FIX 4: Normalizar A/U/V de rango -1/+1 a 0/+1
+                # Si el LLM devuelve en rango -1..1, lo convertimos.
+                # Si ya está en 0..1, la normalización es idempotente (0→0.5 ya no es correcta).
+                # Detectamos si es rango -1..1 comprobando si alguno es negativo.
+                if soc_a < 0 or soc_u < 0 or soc_v < 0:
+                    soc_a = (soc_a + 1.0) / 2.0
+                    soc_u = (soc_u + 1.0) / 2.0
+                    soc_v = (soc_v + 1.0) / 2.0
+
+                # Clamping de seguridad
+                soc_a = max(0.0, min(1.0, soc_a))
+                soc_u = max(0.0, min(1.0, soc_u))
+                soc_v = max(0.0, min(1.0, soc_v))
+                soc_p = max(-1.0, min(1.0, soc_p))
             else:
                 raise ValueError(f"No JSON found en la respuesta: {respuesta}")
 

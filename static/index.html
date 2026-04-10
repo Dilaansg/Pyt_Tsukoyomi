@@ -21,9 +21,21 @@
 
             <div class="minimal-card">
                 <h2>¿Qué está pasando?</h2>
+                <!-- Thumbnail de previsualización de captura -->
+                <div id="vision-preview" style="display:none; align-items:center; gap:8px; padding: 6px 12px; margin-bottom: 8px; background: var(--bg-secondary); border-radius: 8px; border: 1px solid var(--border-light);">
+                    <img id="vision-thumb" src="" alt="preview" style="height:48px; width:48px; object-fit:cover; border-radius:6px; border:1px solid var(--border-light);">
+                    <span style="font-size:0.78rem; color:var(--text-secondary); flex:1;">Captura adjuntada</span>
+                    <button id="btn-quitar-imagen" style="background:transparent; color:var(--text-secondary); font-size:1rem; padding:4px 8px; border-radius:4px; cursor:pointer;" title="Quitar imagen">✕</button>
+                </div>
+
                 <div class="claude-input-container">
+                    <!-- Botón de adjuntar (clip) -->
+                    <button id="btn-adjuntar" class="btn-attach-claude" title="Subir captura de chat">📎</button>
+                    <input type="file" id="input-imagen" accept="image/*" style="display:none;">
+                    
                     <textarea id="input-escenario" rows="4"
-                        placeholder="Describe el contexto o situación aquí..."></textarea>
+                        placeholder="Describe el contexto o adjunta una captura de tu situación..."></textarea>
+                    
                     <button id="btn-next-to-modes" class="btn-send-claude">
                         <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor"
                             stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">

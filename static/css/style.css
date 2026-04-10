@@ -232,6 +232,29 @@ body:has(#pantalla-chat.active) .main-footer {
   background-color: var(--accent-crimson-hover);
 }
 
+.btn-attach-claude {
+  position: absolute;
+  bottom: 12px;
+  left: 12px;
+  width: 34px;
+  height: 34px;
+  border-radius: 8px;
+  background-color: var(--bg-secondary);
+  border: 1px solid var(--border-light);
+  color: var(--text-secondary);
+  display: grid;
+  place-items: center;
+  padding: 0 !important;
+  margin: 0 !important;
+  cursor: pointer;
+  font-size: 1.1rem;
+  transition: var(--transition-smooth);
+}
+
+.btn-attach-claude:hover {
+  background-color: var(--border-light);
+}
+
 .modes-grid-large {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -407,6 +430,7 @@ body:has(#pantalla-chat.active) .main-footer {
 }
 
 #chat-input {
+  flex-grow: 1;
   border: none;
   background: transparent;
   padding: 6px 0;
@@ -422,14 +446,34 @@ body:has(#pantalla-chat.active) .main-footer {
 #btn-enviar {
   padding: 0 !important;
   border-radius: 8px;
-  width: 34px;
-  height: 34px;
+  width: 38px;
+  height: 38px;
   background-color: var(--accent-crimson);
   color: white;
   display: grid;
   place-items: center;
   flex-shrink: 0;
   border: none;
+  cursor: pointer;
+  transition: var(--transition-smooth);
+}
+
+#btn-adjuntar {
+  background: var(--bg-main);
+  border: 1px solid var(--border-light);
+  border-radius: 8px;
+  width: 38px;
+  height: 38px;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  font-size: 1.2rem;
+  transition: var(--transition-smooth);
+  flex-shrink: 0;
+}
+
+#btn-adjuntar:hover {
+  background: var(--bg-secondary);
 }
 
 #btn-enviar svg {

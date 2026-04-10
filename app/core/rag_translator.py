@@ -100,19 +100,14 @@ class EnsambladorPromptV5:
     )
 
     PROMPT_CONSEJO = (
-        "Eres un confidente inteligente y estratega social avanzado (experto en psicología y teoría de juegos). "
-        "Tu objetivo no es solo consolar, sino revelar las dinámicas de poder subyacentes en la situación.\n\n"
-        "Contexto del usuario: '{escenario}'\n\n"
-        "Tu objetivo: Ayudar al usuario a entender la estrategia oculta de los demás y "
-        "darle UNA acción concreta o táctica verbal para recuperar el control.\n\n"
-        "Estilo de Respuesta y Teoría de la Comunicación:\n"
-        "- [LONGITUD DINÁMICA]: Ajusta la longitud de tu mensaje según la táctica sugerida. "
-        "Si la situación requiere firmeza, autoridad o cortar una manipulación, usa pocas palabras, ritmo rápido y sé tajante (economía de palabras = alto estatus). "
-        "Si la situación requiere consuelo genuino o vulnerabilidad, permítete ser pausado y moderadamente más extenso.\n"
-        "- Empieza siempre validando la emoción que siente el usuario ('Ese nudo en el estómago es normal porque...').\n"
-        "- Usa lenguaje coloquial, directo y casi quirúrgico. Nada de listas de pasos ni lenguaje corporativo.\n"
-        "- Nunca uses jerga psicológica a menos que el usuario ya la haya usado (nada de 'gaslighting', 'narcisista' a menos que sea vital).\n"
-        "- Jamás menciones tus limitaciones sistémicas. Eres el confidente, punto."
+        "Eres un confidente inteligente y estratega social avanzado (psicología y teoría de juegos).\n\n"
+        "Contexto Actual: '{escenario}'\n\n"
+        "Reglas de Estilo:\n"
+        "- [LONGITUD DINÁMICA]: Sé tajante y breve para proyectar autoridad, o más extenso si la situación requiere apoyo genuino.\n"
+        "- Validación Emocional: Úsala solo si sientes que es necesario conectar con el usuario al inicio de un nuevo tema. No la repitas mecánicamente en cada respuesta.\n"
+        "- Tácticas: Revela las dinámicas ocultas y da UNA acción concreta para recuperar el control.\n"
+        "- Lenguaje: Coloquial, directo, quirúrgico. Nada de listas ni lenguaje corporativo.\n"
+        "- Identidad: Jamás menciones que eres una IA o limitaciones de programación."
     )
 
     def __init__(self):
@@ -139,10 +134,13 @@ class EnsambladorPromptV5:
             estilos=estilos,
         )
 
-    def ensamblar_consejo(self, escenario: str, ctx: PayloadFaseA) -> str:
-        return self.PROMPT_CONSEJO.format(
+    def ensamblar_consejo(self, escenario: str, ctx: PayloadFaseA, tiene_historial: bool = False) -> str:
+        prompt = self.PROMPT_CONSEJO.format(
             escenario=escenario or "una situación interpersonal compleja.",
         )
+        if tiene_historial:
+            prompt += "\n\nNOTA DE CONTINUIDAD: Ya has dado un diagnóstico inicial. Enfócate ahora en la nueva pregunta del usuario y sé más conciso en el análisis general."
+        return prompt
 
 
 # ─────────────────────────────────────────────
@@ -165,10 +163,10 @@ class BancoTacticasVectorial:
             [t["vector"] for t in self.tacticas], dtype=torch.float32
         )
 
-    def buscar(self, pred: PrediccionFriccion, top_k: int = 1) -> Tuple[List[str], List[str]]:
+    def buscar(self, pred: PrediccionFriccion, top_k: int = 1, modo: str = "simulador") -> Tuple[List[str], List[str]]:
         """
         Retorna las `top_k` tácticas más cercanas al vector de predicción.
-        Para el Simulador usamos top_k=1 (una sola directiva = respuesta variable natural).
+        Aplica reglas exhaustivas de filtrado y priorización sgún el 'modo'.
         """
         query = torch.tensor(
             [pred.terquedad, pred.frialdad, pred.sarcasmo, pred.frustracion],
@@ -177,7 +175,23 @@ class BancoTacticasVectorial:
         norm_query = F.normalize(query.unsqueeze(0), p=2, dim=1)
         norm_vectores = F.normalize(self.vectores, p=2, dim=1)
         scores = torch.mm(norm_query, norm_vectores.t()).squeeze()
-        top = scores.topk(min(top_k, len(self.tacticas)))
+
+        scores_modificados = scores.clone()
+        
+        # Generar IDs a excluir o priorizar dinámicamente sin alterar el JSON
+        excluir_simulador = [f"T{i}" for i in range(41, 51)] + [f"T{i}" for i in range(86, 101)]
+        priorizar_consejo = [f"T{i}" for i in range(86, 101)]
+        
+        for i, t in enumerate(self.tacticas):
+            t_id = t["id"]
+            if modo == "simulador":
+                if t_id in excluir_simulador:
+                    scores_modificados[i] = -float('inf')  # Excluir tacticas de resolucion y empatia pura
+            elif modo == "consejo":
+                if t_id in priorizar_consejo:
+                    scores_modificados[i] += 10.0  # Priorizar tacticas constructivas
+
+        top = scores_modificados.topk(min(top_k, len(self.tacticas)))
         indices = top.indices.tolist()
         if isinstance(indices, int):
             indices = [indices]
@@ -204,7 +218,7 @@ class TraductorSemanticoV5:
         escenario: str,
     ) -> Tuple[str, List[str], List[str]]:
         """Pipeline para modo simulador: recupera 1 táctica y ensambla el prompt."""
-        tacticas_textos, tacticas_ids = self.banco.buscar(pred, top_k=1)
+        tacticas_textos, tacticas_ids = self.banco.buscar(pred, top_k=1, modo=modo)
         prompt = self.ensamblador.ensamblar_simulador(
             tactica=tacticas_textos[0] if tacticas_textos else "",
             escenario=escenario,
@@ -212,9 +226,9 @@ class TraductorSemanticoV5:
         )
         return prompt, tacticas_textos, tacticas_ids
 
-    def ensamblar_consejo(self, escenario: str, ctx: PayloadFaseA) -> str:
+    def ensamblar_consejo(self, escenario: str, ctx: PayloadFaseA, tiene_historial: bool = False) -> str:
         """Prompt directo para modo consejo, sin banco de tácticas."""
-        return self.ensamblador.ensamblar_consejo(escenario, ctx)
+        return self.ensamblador.ensamblar_consejo(escenario, ctx, tiene_historial)
 
 
 # Alias de compatibilidad (por si main.py usa el nombre anterior)

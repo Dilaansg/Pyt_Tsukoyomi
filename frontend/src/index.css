@@ -1,0 +1,64 @@
+@import "tailwindcss";
+@custom-variant dark (&:where(.dark, .dark *));
+
+@theme {
+  --color-primary-base: #DC2626;  /* Red 600 */
+  --color-primary-light: #EF4444; /* Red 500 */
+  --color-accent-orange: #991B1B; /* Red 800 (Accent) */
+  
+  --color-bg-light: #FEF2F2;      /* Red 50 (Very light pink/red) */
+  --color-text-light: #450A0A;    /* Red 950 (Almost black/dark red) */
+  
+  --color-bg-dark: #0f172a;       /* Slate 900 (Keep dark modern bg) */
+  --color-text-dark: #f8fafc;     /* Slate 50 */
+}
+
+/* Base styles for global dark mode */
+:root {
+  background-color: var(--color-bg-light);
+  color: var(--color-text-light);
+  transition: background-color 0.3s ease, color 0.3s ease;
+  color-scheme: light;
+}
+
+.dark {
+  background-color: var(--color-bg-dark);
+  color: var(--color-text-dark);
+  color-scheme: dark;
+}
+
+textarea, input {
+  color: inherit;
+  text-align: left !important;
+}
+
+@layer components {
+  /* Glassmorphism utility classes */
+  .glass {
+    background: rgba(255, 255, 255, 0.7);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+  }
+
+  .dark .glass {
+    background: rgba(15, 23, 42, 0.6);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
+  }
+
+  .glass-card {
+    border-radius: 1rem;
+    padding: 1.5rem;
+  }
+
+  .no-scrollbar {
+    -ms-overflow-style: none; /* IE and Edge */
+    scrollbar-width: none; /* Firefox */
+  }
+  .no-scrollbar::-webkit-scrollbar {
+    display: none; /* Chrome, Safari and Opera */
+  }
+}
+

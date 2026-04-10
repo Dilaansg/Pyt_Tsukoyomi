@@ -8,16 +8,18 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
 
 
 from app.config.settings import config
-from app.api.schemas import PeticionSimulacion, RespuestaSimulacion, FeedbackSession
+from app.api.schemas import PeticionSimulacion, RespuestaSimulacion, FeedbackSession, VisionUploadRequest, MensajeHistorial
 from app.core.nlp_service import NLPService
 from app.core.friction_model import RedMediacionMLP, predecir
 from app.core.rag_translator import TraductorSemanticoV4
 from app.core.schemas import PayloadFaseA, PayloadFaseB, PrediccionFriccion
 from app.core.llm_router import LLMRouter
 from app.core.vision_service import VisionService
+from app.core.tension_tracker import TensionTracker
 
 from app.db.mongo import ping, col_sesiones, col_latencias
 
@@ -74,8 +76,10 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Servimos los archivos estáticos (HTML, CSS, JS) en la ruta /static
-app.mount("/static", StaticFiles(directory="static"), name="static")
+# Configuración para servir la SPA de React en /frontend/dist
+dist_dir = Path("frontend/dist")
+if dist_dir.exists():
+    app.mount("/assets", StaticFiles(directory="frontend/dist/assets"), name="assets")
 
 @app.get("/health")
 async def health():
@@ -115,20 +119,34 @@ async def simular_friccion(peticion: PeticionSimulacion):
 
         # BIFURCACIÓN: modo consejo salta MLP y RAG (pipeline corto)
         if peticion.modo == "consejo":
+            tracker = None
             prediccion = PrediccionFriccion(0.0, 0.0, 0.0, 0.0)
             tacticas_nombres = []
             tacticas_ids = []
-            prompt_final = rag.ensamblar_consejo(peticion.escenario, fase_a)
+            has_hist = len(peticion.historial) > 0
+            prompt_final = rag.ensamblar_consejo(peticion.escenario, fase_a, tiene_historial=has_hist)
             latencias["modo_efectivo"] = "consejo_directo"
         else:
+            # Recuperar estado de tensión del request
+            tracker = TensionTracker.from_dict(peticion.tension_state)
+            
+            # Analizar el texto del usuario y actualizar tracker
+            analisis_tension = tracker.analizar_respuesta_usuario(peticion.texto_usuario)
+            tracker.actualizar_tension(analisis_tension)
+
             # FASE B: Predicción de Fricción vía MLP (Biometría)
             t_mlp_start = time.time()
             metadatos_dict = peticion.metadatos.model_dump()
             fase_b = PayloadFaseB(**metadatos_dict)
-            prediccion = predecir(mlp, fase_a, fase_b)
+            prediccion_base = predecir(mlp, fase_a, fase_b)
+            
+            # Ajustar la predicción base escalando la fricción
+            prediccion = tracker.modificar_prediccion(prediccion_base)
+            
             latencias["FASE_B_MLP"] = round(time.time() - t_mlp_start, 3)
             print(f"\n[MLP-DEBUG] Input Biometría: {metadatos_dict}")
-            print(f"[MLP-DEBUG] Fricción Predicha: {prediccion.to_dict()}\n")
+            print(f"[MLP-DEBUG] Fricción Base: {prediccion_base.to_dict()}")
+            print(f"[MLP-DEBUG] Fricción Ajustada (Tensión {tracker.nivel_tension:.2f}): {prediccion.to_dict()}\n")
 
             # FASE C: Selección vectorial de táctica (top_k=1)
             t_rag_start = time.time()
@@ -141,13 +159,15 @@ async def simular_friccion(peticion: PeticionSimulacion):
         # FASE D: Generación de Respuesta con LLM ROUTER
         t_llm_start = time.time()
         
-        # FIX: Escenario en el historial
+        # FIX: Uso de instancias reales MensajeHistorial en lugar de dicts
         historial_formateado = []
         if peticion.escenario and peticion.modo != "consejo":
-            historial_formateado.append(type("Obj", (object,), {"rol": "user", "contenido": f"CONTEXTO DEL ESCENARIO: {peticion.escenario}"}))
-            historial_formateado.append(type("Obj", (object,), {"rol": "model", "contenido": "Entendido."}))
-            
-        historial_formateado.extend(peticion.historial)
+            historial_formateado.append(MensajeHistorial(role="user", content=f"CONTEXTO DEL ESCENARIO (No respondas, solo tenlo en cuenta): {peticion.escenario}"))
+            historial_formateado.append(MensajeHistorial(role="model", content="Entendido. Mantendré este contexto."))
+
+        # Mantener los objetos MensajeHistorial Pydantic sin convertirlos a dict
+        for msg in peticion.historial:
+            historial_formateado.append(msg)
 
         try:
             respuesta_texto, modelo_usado = await app.state.llm_router.llamar_llm(
@@ -189,7 +209,8 @@ async def simular_friccion(peticion: PeticionSimulacion):
             id_tacticas_usadas=tacticas_ids,
             prompt_inyectado=prompt_final,
             latencias=latencias,
-            modelo_utilizado=modelo_usado
+            modelo_utilizado=modelo_usado,
+            tension_state=tracker.to_dict() if tracker else None
         )
 
     except Exception as e:
@@ -224,7 +245,7 @@ async def store_feedback(feedback: FeedbackSession):
         raise HTTPException(status_code=500, detail=f"Error guardando feedback: {str(e)}")
 
 @app.post("/detectar-contexto-visual")
-async def detectar_contexto_visual(req: __import__('app.api.schemas', fromlist=['VisionUploadRequest']).VisionUploadRequest):
+async def detectar_contexto_visual(req: VisionUploadRequest):
     """ Toma un base64, lo pasa a Gemini Vision y retorna el JSON extraído. """
     try:
         t0 = time.time()
@@ -240,6 +261,19 @@ async def detectar_contexto_visual(req: __import__('app.api.schemas', fromlist=[
         print(f"[VISION] Contexto extraído en {round(time.time() - t0, 2)}s.")
         return json_extraido
     except Exception as e:
-        print(f"[VISION ERROR] Fallo crítico extrayendo imagen: {e}")
         # Enviar aviso seguro al front para fallback natural
         return {"error": "fallo_critico", "fallback_sugerido": True, "detalle": str(e)}
+
+# --- CATCH-ALL ROUTE PARA REACT FRONTEND ---
+@app.get("/{full_path:path}")
+async def serve_frontend(full_path: str):
+    if not dist_dir.exists():
+        return {"message": "Frontend no compilado. Ejecuta 'npm run build' en /frontend."}
+    
+    # Primero intentar resolver el archivo exacto solicitado
+    file_target = dist_dir / full_path
+    if file_target.is_file():
+        return FileResponse(file_target)
+    
+    # Fallback al index.html para que React Router (y Vite) manejen la ruta
+    return FileResponse(dist_dir / "index.html")

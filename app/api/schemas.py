@@ -23,6 +23,7 @@ class PeticionSimulacion(BaseModel):
     texto_usuario: str = Field(min_length=1, max_length=2000)
     metadatos:     MetadatosJS
     historial:     List[MensajeHistorial] = []
+    tension_state: Optional[dict] = None
 
 class RespuestaSimulacion(BaseModel):
     """ Datos proyectados de salida hacia el cliente frontend. """
@@ -34,6 +35,7 @@ class RespuestaSimulacion(BaseModel):
     prompt_inyectado:      str 
     latencias:             dict = {}
     modelo_utilizado:      str = ""
+    tension_state:         Optional[dict] = None
 
 class FeedbackTactica(BaseModel):
     """ Feedback específico para una táctica para el ajuste de pesos. """
@@ -54,3 +56,7 @@ class FeedbackSession(BaseModel):
 class VisionUploadRequest(BaseModel):
     """ Esquema de envío de captura de chat al endpoint de Visión. """
     imagen_base64: str = Field(description="Captura de chat comprimida en base64 pura sin cabecera MIME.")
+
+class PeticionAnalisisBody(BaseModel):
+    historial: List[MensajeHistorial]
+    tacticas_ids: List[str]
