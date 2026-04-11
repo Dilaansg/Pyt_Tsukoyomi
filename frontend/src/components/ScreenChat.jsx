@@ -6,6 +6,7 @@ import { useBiometrics } from "../hooks/useBiometrics";
 export function ScreenChat({ data, onEndChat }) {
   const [messages, setMessages] = useState([]);
   const [rawHistory, setRawHistory] = useState([]); // Historial rol/content para backend
+  const [sessionTactics, setSessionTactics] = useState([]);
   const [inputVal, setInputVal] = useState("");
   const [isTyping, setIsTyping] = useState(true);
   
@@ -115,6 +116,17 @@ export function ScreenChat({ data, onEndChat }) {
                 { role: "user", content: textToSend }, 
                 { role: "model", content: backData.respuesta_bot }
             ]);
+            
+            if (backData.id_tacticas_usadas && backData.id_tacticas_usadas.length > 0) {
+                setSessionTactics(prev => {
+                    const dict = {};
+                    prev.forEach(t => dict[t.id] = t);
+                    backData.id_tacticas_usadas.forEach((id, index) => {
+                        dict[id] = { id: id, name: backData.tacticas_usadas[index] || id };
+                    });
+                    return Object.values(dict);
+                });
+            }
         }
     } catch (e) {
         setIsTyping(false);
@@ -143,7 +155,10 @@ export function ScreenChat({ data, onEndChat }) {
             </div>
           </div>
         </div>
-        <button onClick={() => onEndChat(rawHistory.map(m => ({ role: m.role === 'model' ? 'bot' : 'user', content: m.content })))} className="p-2 hover:bg-red-500/20 text-red-500 rounded-full transition-colors opacity-70 hover:opacity-100" title="Finalizar Sesión">
+        <button onClick={() => onEndChat(
+          rawHistory.map(m => ({ role: m.role === 'model' ? 'bot' : 'user', content: m.content })),
+          sessionTactics
+        )} className="p-2 hover:bg-red-500/20 text-red-500 rounded-full transition-colors opacity-70 hover:opacity-100" title="Finalizar Sesión">
           <X size={20} />
         </button>
       </div>

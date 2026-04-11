@@ -24,6 +24,7 @@ export default function App() {
 
   // Historial global para el feedback
   const [globalChatHistory, setGlobalChatHistory] = useState([]);
+  const [globalTactics, setGlobalTactics] = useState([]);
 
   useEffect(() => {
     localStorage.setItem("tsukoyomi_theme", isDark ? "dark" : "light");
@@ -36,8 +37,9 @@ export default function App() {
 
   const toggleDark = () => setIsDark(!isDark);
 
-  const handleEndChat = (historyObj) => {
+  const handleEndChat = (historyObj, tactics = []) => {
     setGlobalChatHistory(historyObj);
+    setGlobalTactics(tactics);
     setShowFeedback(true);
   };
 
@@ -48,7 +50,8 @@ export default function App() {
         historial: globalChatHistory, // Debe venir formateado del ScreenChat
         puntuacion: rating,
         comentario: comment,
-        tacticas_feedback: [] // En React no las extrajimos aún, pero se envían vacías
+        // Si el usuario da 3 o más estrellas, asumimos que las tácticas usadas fueron medianamente efectivas
+        tacticas_feedback: globalTactics.map(t => ({ id_tactica: t.id, efectiva: rating >= 3 })) 
     };
 
     try {
@@ -63,6 +66,7 @@ export default function App() {
 
     // Reset everything
     setShowFeedback(false);
+    setGlobalTactics([]);
     setSessionData({ contextText: "", imagePreview: null, age: sessionData.age, mode: null });
     setCurrentScreen("context");
   };
